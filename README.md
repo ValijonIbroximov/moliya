@@ -22,8 +22,10 @@ npm test                     # parser va hisob-kitob testlari (54 ta)
 
 ## 2. Supabase sozlash (bulut saqlash + telefon↔kompyuter)
 
-1. [supabase.com](https://supabase.com) → **New project** (region: Frankfurt — Vercel `fra1` bilan yaqin).
-2. **SQL Editor** → `supabase/schema.sql` faylini to'liq yopishtiring → **Run**. Bu jadvallar, RLS (har kim faqat o'z yozuvini ko'radi) va Realtime'ni yoqadi.
+Bepul planda 2 ta faol loyiha limiti bor. Yangi loyiha shart emas — jadvallar `moliya_` prefiksi bilan bo'lgani uchun **mavjud loyihangizga** (masalan, boshqa ilovangiz turgan loyihaga) xavfsiz qo'shiladi; auth foydalanuvchilari ham o'sha loyihaniki bo'ladi (RLS har kimga faqat o'z qatorlarini ko'rsatadi).
+
+1. [supabase.com](https://supabase.com) → mavjud loyihani oching (yoki limit bo'lsa — yangi: region Frankfurt).
+2. **SQL Editor** → `supabase/schema.sql` faylini to'liq yopishtiring → **Run**. Bu `moliya_accounts`, `moliya_notes`, `moliya_settings` jadvallari, RLS va Realtime'ni yaratadi; boshqa jadvallarga tegmaydi.
 3. **Authentication → Providers → Email**: yoqilgan. Tezroq bo'lishi uchun *Confirm email* ni o'chirib qo'ysangiz, ro'yxatdan o'tgan zahoti kiriladi.
    - Google bilan kirish kerak bo'lsa: Google provider'ni sozlang va Vercel'da `NEXT_PUBLIC_ENABLE_GOOGLE=1` qo'ying.
 4. **Authentication → URL Configuration**: *Site URL* = Vercel manzilingiz (`https://moliya-….vercel.app`), *Redirect URLs* ga ham shu manzilni qo'shing.
@@ -101,13 +103,17 @@ supabase/schema.sql   jadvallar, RLS, realtime
 tests/parser.test.ts  spec misollari + Keep skrinshoti bo'yicha testlar
 ```
 
-## 7. Ma'lumotlar xavfsizligi
+## 7. Bepul plan limitlari (egress 5 GB/oy)
+
+Moliya trafikni deyarli sarflamaydi: bitta yozuv ≈ 0,5 KB, sinxronizatsiya faqat o'zgargan qatorlarni (`updated_at > lastSync`) oladi, realtime xabarlari bir necha yuz bayt. Oyiga bir necha MB. Egress limiti boshqa loyihalar hisobidan oshsa, tashkilotdagi barcha loyihalar (shu jumladan Moliya) 402 oladi — shuning uchun og'ir loyihani Supabase **Usage → Egress** bo'limida topib yengillating.
+
+## 8. Ma'lumotlar xavfsizligi
 
 - Supabase RLS: har foydalanuvchi faqat `user_id = auth.uid()` qatorlarini o'qiydi/yozadi.
 - Xom matn faqat sizning bazangizda. AI'ga **xom matn yuborilmaydi** — faqat yig'ma raqamlar va toifa nomlari.
 - JSON eksport/import — zaxira va qurilmaga ko'chirish uchun (Sozlamalar ⚙).
 
-## 8. Tekshirilgan narsalar
+## 9. Tekshirilgan narsalar
 
 - 54 ta avtomatik test: spec'dagi barcha yozuv shakllari, Keep skrinshotidagi 3 kunlik matn (balanslar `N = 80`, `K = 855`, `Uy = 6200` — sizning raqamlaringizga mos; `N = 1948 noma'lum 2` dagi +2 tafovut topildi; `K -18 = 1069` da 10 ming va `N -12 = 80` da 2 ming arifmetik farq topildi), kech kiritilgan yozuv sanasi, USD/UZS ajratish, juftlashtirish, chala satrlar.
 - Brauzer testi (Playwright, mobil 390px va desktop): matn kiritish → tahlil, sahifa yangilangach matn tiklanishi, hisob/amal/summa/toifa tugmalari matnni to'g'ri yig'ishi, chala/noma'lum/noaniq holatlar va tezkor tuzatish, barcha bo'limlar ochilishi.

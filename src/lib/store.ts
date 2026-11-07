@@ -10,6 +10,13 @@ import { today } from "./dates";
 
 export type SaveStatus = "idle" | "saving" | "local" | "cloud" | "offline" | "error" | "guest";
 
+/** Jadval nomlari — mavjud Supabase loyihasida boshqa jadvallar bilan to'qnashmasligi uchun prefiks bilan */
+export const TABLES = {
+  accounts: process.env.NEXT_PUBLIC_TABLE_PREFIX ? process.env.NEXT_PUBLIC_TABLE_PREFIX + "accounts" : "moliya_accounts",
+  notes: process.env.NEXT_PUBLIC_TABLE_PREFIX ? process.env.NEXT_PUBLIC_TABLE_PREFIX + "notes" : "moliya_notes",
+  settings: process.env.NEXT_PUBLIC_TABLE_PREFIX ? process.env.NEXT_PUBLIC_TABLE_PREFIX + "settings" : "moliya_settings",
+};
+
 export interface User { id: string; email?: string }
 
 export interface AppState {
@@ -255,14 +262,14 @@ export async function flush(): Promise<void> {
   try {
     if (snapshot.accounts.length) {
       const rows: AccountRow[] = state.accounts.filter((a) => snapshot.accounts.includes(a.id)).map((a) => ({ ...a, user_id: u.id }));
-      if (rows.length) { const { error } = await sb.from("accounts").upsert(rows, { onConflict: "id" }); if (error) throw error; }
+      if (rows.length) { const { error } = await sb.from(TABLES.accounts).upsert(rows, { onConflict: "id" }); if (error) throw error; }
     }
     if (snapshot.notes.length) {
       const rows: NoteRow[] = state.notes.filter((n) => snapshot.notes.includes(n.id)).map((n) => ({ ...n, user_id: u.id }));
-      if (rows.length) { const { error } = await sb.from("notes").upsert(rows, { onConflict: "id" }); if (error) throw error; }
+      if (rows.length) { const { error } = await sb.from(TABLES.notes).upsert(rows, { onConflict: "id" }); if (error) throw error; }
     }
     if (snapshot.settings) {
-      const { error } = await sb.from("settings").upsert({ user_id: u.id, data: state.settings, updated_at: state.settings.updated_at }, { onConflict: "user_id" });
+      const { error } = await sb.from(TABLES.settings).upsert({ user_id: u.id, data: state.settings, updated_at: state.settings.updated_at }, { onConflict: "user_id" });
       if (error) throw error;
     }
     // muvaffaqiyat — faqat yuborilganlarni navbatdan olib tashlaymiz
@@ -324,10 +331,10 @@ export async function pull(full = false): Promise<void> {
   if (!sb || !u) return;
   try {
     const since = full ? null : state.lastSync;
-    let qn = sb.from("notes").select("*").eq("user_id", u.id);
-    let qa = sb.from("accounts").select("*").eq("user_id", u.id);
+    let qn = sb.from(TABLES.notes).select("*").eq("user_id", u.id);
+    let qa = sb.from(TABLES.accounts).select("*").eq("user_id", u.id);
     if (since) { qn = qn.gt("updated_at", since); qa = qa.gt("updated_at", since); }
-    const [rn, ra, rs] = await Promise.all([qn, qa, sb.from("settings").select("*").eq("user_id", u.id).maybeSingle()]);
+    const [rn, ra, rs] = await Promise.all([qn, qa, sb.from(TABLES.settings).select("*").eq("user_id", u.id).maybeSingle()]);
     if (rn.error) throw rn.error;
     if (ra.error) throw ra.error;
     mergeRows((rn.data || []) as NoteRow[], (ra.data || []) as AccountRow[]);
@@ -358,10 +365,10 @@ function subscribeRealtime() {
   channelCleanup?.();
   const ch = sb
     .channel("moliya-" + u.id)
-    .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${u.id}` }, (p) => {
+    .on("postgres_changes", { event: "*", schema: "public", table: TABLES.notes, filter: `user_id=eq.${u.id}` }, (p) => {
       if (p.new && typeof p.new === "object" && "id" in p.new) mergeRows([p.new as NoteRow], []);
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "accounts", filter: `user_id=eq.${u.id}` }, (p) => {
+    .on("postgres_changes", { event: "*", schema: "public", table: TABLES.accounts, filter: `user_id=eq.${u.id}` }, (p) => {
       if (p.new && typeof p.new === "object" && "id" in p.new) mergeRows([], [p.new as AccountRow]);
     })
     .subscribe();
