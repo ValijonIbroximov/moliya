@@ -1,0 +1,26 @@
+{
+  "name": "moliya-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Moliya AI — o'zbek tilidagi shaxsiy moliya kundaligi (Next.js + Supabase, Vercel)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
