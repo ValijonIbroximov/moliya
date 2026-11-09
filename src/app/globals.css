@@ -90,7 +90,7 @@ small { font-size: 12.5px; }
 
 /* ---- shell ---- */
 .shell { max-width: 1180px; margin: 0 auto; padding: 0 16px calc(var(--nav-h) + 24px); }
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0 8px; }
+.topbar { position: sticky; top: 0; z-index: 25; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -16px; padding: max(10px, env(safe-area-inset-top)) 16px 8px; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; letter-spacing: -.4px; }
 .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font-size: 17px; font-weight: 800; position: relative; flex-shrink: 0; box-shadow: 0 2px 6px rgba(22,33,43,.25); }
 .brand .mark span { transform: translateY(-1px); }
@@ -261,7 +261,7 @@ details.help code { background: var(--surface-2); padding: 1px 5px; border-radiu
 
 @media (min-width: 900px) {
   .shell { padding: 0 28px 40px; }
-  .topbar { padding: 18px 0 10px; }
+  .topbar { margin: 0 -28px; padding: 14px 28px 10px; }
   .nav { position: static; background: transparent; border: 0; backdrop-filter: none; padding: 4px 0 14px; gap: 6px; justify-content: flex-start; }
   .nav button { flex: 0 0 auto; flex-direction: row; gap: 7px; font-size: 14px; padding: 8px 14px; min-height: 40px; }
   .nav button .dot { top: 8px; right: 8px; }
