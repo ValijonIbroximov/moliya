@@ -62,7 +62,6 @@ function Shell() {
 
   const computed = useMemo(() => compute(app.notes, app.accounts, app.settings, todayStr), [app.notes, app.accounts, app.settings, todayStr]);
   const note = useMemo(() => app.notes.find((n) => n.id === app.activeNoteId && !n.deleted) || null, [app.notes, app.activeNoteId]);
-  const reviewCount = computed.issues.filter((i) => i.kind !== "snapshot_diff" && i.kind !== "expected_mismatch").length;
   const t = totals(computed, app.accounts, "UZS");
   const tUsd = totals(computed, app.accounts, "USD");
   const fToday = flow(computed.ok, { from: todayStr, to: todayStr, label: "" }, "UZS", app.accounts);
@@ -174,7 +173,7 @@ function Shell() {
       <nav className="nav" aria-label="Bo'limlar">
         {TABS.map(([id, name]) => (
           <button key={id} type="button" className={tab === id ? "active" : ""} onClick={() => go(id)} aria-current={tab === id ? "page" : undefined}>
-            {ICONS[id]}{name}{id === "stats" && reviewCount > 0 ? <span className="dot" title={`${reviewCount} ta tekshirish`} /> : null}
+            {ICONS[id]}{name}
           </button>
         ))}
       </nav>
