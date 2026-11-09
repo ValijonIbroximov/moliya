@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import type { Account, Computed, Currency } from "@/lib/types";
 import { CURRENCIES } from "@/lib/types";
-import { upsertAccount } from "@/lib/store";
+import { deleteAccount, upsertAccount } from "@/lib/store";
 import { money, signed } from "@/lib/format";
 import { humanDate } from "@/lib/dates";
 import { ACC_TYPE_LABEL, Badge, Modal, useToast } from "./ui";
@@ -135,6 +135,21 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
         <p className="hint">«Uydan», «naqddan» kabi so'zlar shu nomlar orqali tanib olinadi. Shaxs hisobida musbat qoldiq — u sizga qarzdor, manfiy — siz qarzdorsiz. Satrda «$» yozilsa, shu hisobning dollar qoldig'i alohida yuritiladi.</p>
         {editing && <label className="label" style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} style={{ width: "auto" }} /> Arxivga olish (yozuvlar saqlanadi, kataklarda ko'rinmaydi)</label>}
         <button className="primary" style={{ marginTop: 16, width: "100%" }}>{editing ? "Saqlash" : "Hisob qo'shish"}</button>
+        {editing && (
+          <button
+            type="button"
+            className="danger"
+            style={{ marginTop: 8, width: "100%" }}
+            onClick={() => {
+              if (!window.confirm(`«${editing.code}${editing.name && editing.name !== editing.code ? " · " + editing.name : ""}» hisobi butunlay o'chirilsinmi?\n\nYozuvlar (xom matn) o'zgarmaydi, lekin bu qisqartma endi tanilmay, satrlari «chala» ro'yxatiga tushishi mumkin. Tarix kerak bo'lsa, o'chirish o'rniga «Arxivga olish» ni tanlang.`)) return;
+              deleteAccount(editing.id);
+              toast(`Hisob o'chirildi: ${editing.code}`);
+              onClose();
+            }}
+          >
+            🗑 Hisobni o'chirish
+          </button>
+        )}
       </form>
     </Modal>
   );

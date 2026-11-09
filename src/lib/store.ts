@@ -94,7 +94,7 @@ const outboxKey = (scope: string) => `moliya:outbox:${scope}`;
 const uiKey = () => `moliya:ui`;
 
 interface Persisted { accounts: Account[]; notes: Note[]; settings: Settings; lastSync: string | null }
-interface Outbox { notes: string[]; accounts: string[]; settings: boolean }
+interface Outbox { notes: string[]; accounts: string[]; settings: boolean; delAccounts?: string[] }
 
 function readJSON<T>(k: string): T | null {
   try { const r = localStorage.getItem(k); return r ? (JSON.parse(r) as T) : null; } catch { return null; }
@@ -121,7 +121,7 @@ function loadScope(scope: string) {
   const p = readJSON<Persisted>(dataKey(scope));
   const ob = readJSON<Outbox>(outboxKey(scope));
   const ui = readJSON<{ activeNoteId: string | null }>(uiKey());
-  outbox = ob || { notes: [], accounts: [], settings: false };
+  outbox = ob ? { delAccounts: [], ...ob } : { notes: [], accounts: [], settings: false, delAccounts: [] };
   const accounts = p?.accounts?.length ? p.accounts : scope === "guest" ? seedAccounts() : [];
   const settings = { ...defaultSettings(), ...(p?.settings || {}) };
   const notes = p?.notes || [];
@@ -214,6 +214,21 @@ export function upsertAccount(a: Partial<Account> & { code: string }): Account {
   return acc;
 }
 
+/** Hisobni butunlay o'chirish: lokal ro'yxatdan olib tashlanadi, bulutdan ham o'chadi (navbat orqali, oflaynda ham yo'qolmaydi). Yozuvlar (xom matn) tegilmaydi. */
+export function deleteAccount(id: string) {
+  const i = state.accounts.findIndex((a) => a.id === id);
+  if (i < 0) return;
+  state.accounts = state.accounts.filter((a) => a.id !== id);
+  emit();
+  outbox.accounts = outbox.accounts.filter((x) => x !== id);
+  outbox.delAccounts = outbox.delAccounts || [];
+  if (!outbox.delAccounts.includes(id)) outbox.delAccounts.push(id);
+  const ok = persistLocal();
+  if (!ok) set({ saveStatus: "error", saveError: "Qurilma xotirasiga yozib bo'lmadi (localStorage to'lgan yoki o'chirilgan). JSON eksport qiling." });
+  else if (state.user && state.cloud) { set({ saveStatus: "saving" }); scheduleFlush(); }
+  else set({ saveStatus: state.user ? "local" : "guest" });
+}
+
 export function updateSettings(patch: Partial<Settings>) {
   state.settings = { ...state.settings, ...patch, updated_at: nowISO() };
   emit();
@@ -249,7 +264,7 @@ export function importData(p: { accounts?: Account[]; notes?: Note[]; settings?:
   if (p.settings) state.settings = { ...state.settings, ...p.settings, updated_at: t };
   state.activeNoteId = null;
   emit();
-  outbox = { notes: state.notes.map((n) => n.id), accounts: state.accounts.map((a) => a.id), settings: true };
+  outbox = { notes: state.notes.map((n) => n.id), accounts: state.accounts.map((a) => a.id), settings: true, delAccounts: outbox.delAccounts || [] };
   afterChange("settings");
 }
 
@@ -274,15 +289,19 @@ export async function flush(): Promise<void> {
   const sb = getSupabase();
   const u = state.user;
   if (!sb || !u || flushing) return;
-  if (!outbox.notes.length && !outbox.accounts.length && !outbox.settings) {
+  if (!outbox.notes.length && !outbox.accounts.length && !outbox.settings && !outbox.delAccounts?.length) {
     if (state.saveStatus === "saving") set({ saveStatus: "cloud" });
     return;
   }
   if (!navigator.onLine) { set({ saveStatus: "offline" }); return; }
   flushing = true;
-  const snapshot: Outbox = { notes: [...outbox.notes], accounts: [...outbox.accounts], settings: outbox.settings };
+  const snapshot: Outbox = { notes: [...outbox.notes], accounts: [...outbox.accounts], settings: outbox.settings, delAccounts: [...(outbox.delAccounts || [])] };
   const settingsAt = state.settings.updated_at;
   try {
+    if (snapshot.delAccounts?.length) {
+      const { error } = await sb.from(TABLES.accounts).delete().in("id", snapshot.delAccounts).eq("user_id", u.id);
+      if (error) throw error;
+    }
     if (snapshot.accounts.length) {
       const rows: AccountRow[] = state.accounts.filter((a) => snapshot.accounts.includes(a.id)).map((a) => ({ ...a, user_id: u.id }));
       if (rows.length) { const { error } = await sb.from(TABLES.accounts).upsert(rows, { onConflict: "id" }); if (error) throw error; }
@@ -298,9 +317,10 @@ export async function flush(): Promise<void> {
     // muvaffaqiyat — faqat yuborilganlarni navbatdan olib tashlaymiz
     outbox.notes = outbox.notes.filter((id) => !snapshot.notes.includes(id));
     outbox.accounts = outbox.accounts.filter((id) => !snapshot.accounts.includes(id));
+    outbox.delAccounts = (outbox.delAccounts || []).filter((id) => !snapshot.delAccounts?.includes(id));
     if (snapshot.settings && state.settings.updated_at === settingsAt) outbox.settings = false;
     retryDelay = 1500;
-    const done = !outbox.notes.length && !outbox.accounts.length && !outbox.settings;
+    const done = !outbox.notes.length && !outbox.accounts.length && !outbox.settings && !outbox.delAccounts.length;
     set({ saveStatus: done ? "cloud" : "saving", saveError: undefined, lastSync: nowISO() });
     persistLocal();
     if (!done) scheduleFlush(200);
@@ -319,6 +339,7 @@ function mergeRows(incomingNotes: NoteRow[], incomingAccounts: AccountRow[]) {
   if (incomingAccounts.length) {
     const map = new Map(state.accounts.map((a) => [a.id, a]));
     for (const r of incomingAccounts) {
+      if (outbox.delAccounts?.includes(r.id)) continue; // o'chirish navbatda — qayta tiklamaymiz
       const local = map.get(r.id);
       if (!local || r.updated_at > local.updated_at) {
         const { user_id: _u, ...rest } = r; void _u;
