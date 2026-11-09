@@ -107,6 +107,18 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   );
 }
 
+export function Brand() {
+  return (
+    <div className="brand">
+      <span className="mark" aria-hidden="true"><span>m</span></span>
+      <span className="btxt">
+        <span className="bttl">Moliya <em>AI</em></span>
+        <small>© VALIJON IBROXIMOV</small>
+      </span>
+    </div>
+  );
+}
+
 export const ICONS = {
   editor: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M12 4v12M6 10l6 6 6-6"/></svg>,
   history: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>,

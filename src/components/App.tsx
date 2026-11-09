@@ -16,7 +16,7 @@ import Stats from "./Stats";
 import Accounts, { AccountDialog } from "./Accounts";
 import AiCenter from "./AiCenter";
 import AuthDialog from "./Auth";
-import { Amount, Badge, ICONS, Modal, ToastProvider, TypeChip, entryTitle, useToast } from "./ui";
+import { Amount, Badge, Brand, ICONS, Modal, ToastProvider, TypeChip, entryTitle, useToast } from "./ui";
 
 type Tab = "editor" | "history" | "stats" | "accounts" | "ai";
 const TABS: [Tab, string][] = [["editor", "Yozuv"], ["history", "Tarix"], ["stats", "Tahlil"], ["accounts", "Hisoblar"], ["ai", "AI"]];
@@ -122,7 +122,7 @@ function Shell() {
   if (locked) {
     return (
       <div className="shell" style={{ maxWidth: 420, paddingTop: 80, textAlign: "center" }}>
-        <div className="brand" style={{ justifyContent: "center", marginBottom: 18 }}><span className="mark"><span>m</span></span>Moliya</div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}><Brand /></div>
         <div className="card">
           <h2>Biometrik qulf</h2>
           <p className="hint" style={{ margin: "8px 0 14px" }}>Davom etish uchun qurilma biometriyasi (barmoq izi / yuz) bilan tasdiqlang.</p>
@@ -137,7 +137,7 @@ function Shell() {
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="brand"><span className="mark"><span>m</span></span>Moliya<span style={{ fontSize: 11, color: "var(--in)", fontWeight: 700, marginLeft: -4 }}>AI</span></div>
+        <Brand />
         <div className="right">
           {app.cloud ? (
             app.user ? <button type="button" className="small" onClick={() => setSettingsOpen(true)} title={app.user.email}>{(app.user.email || "akkaunt").split("@")[0]}</button>
