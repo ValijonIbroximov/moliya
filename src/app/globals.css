@@ -170,6 +170,14 @@ small { font-size: 12.5px; }
 .balstrip .tot { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 .balstrip .tot b { color: var(--on-ink); }
 
+/* ---- vidjetlar ---- */
+.widgets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.wtile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 9px 11px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-height: 0; width: 100%; }
+.wtile small { font-size: 10.5px; font-weight: 600; color: var(--ink-2); }
+.wtile b { font-size: 14.5px; letter-spacing: -.2px; }
+.wtile .bar { width: 100%; height: 6px; background: var(--surface-2); border-radius: 5px; overflow: hidden; display: block; }
+.wtile .bar i { display: block; height: 100%; border-radius: 5px; }
+
 /* ---- composer ---- */
 .segment { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 11px; }
 .segment button { flex: 1; border: 0; background: transparent; padding: 7px 4px; font-size: 13px; white-space: nowrap; min-height: 36px; color: var(--ink-2); }

@@ -10,8 +10,8 @@ import { Modal, useToast } from "./ui";
  * oddiy matn maydoniga CSS niqobi (-webkit-text-security) qo'yiladi. Brauzer buni
  * qo'llamasa, xavfsizlik uchun odatiy parol maydoniga qaytadi (u holda so'rov chiqishi mumkin).
  */
-export function PwInput({ id, value, onChange, placeholder, minLength, autoFocus, autoComplete = "off" }: {
-  id: string; value: string; onChange: (v: string) => void; placeholder?: string; minLength?: number; autoFocus?: boolean; autoComplete?: string;
+export function PwInput({ id, value, onChange, placeholder, minLength, autoFocus, autoComplete = "off", numeric = false }: {
+  id: string; value: string; onChange: (v: string) => void; placeholder?: string; minLength?: number; autoFocus?: boolean; autoComplete?: string; numeric?: boolean;
 }) {
   const [show, setShow] = useState(false);
   const [maskOk, setMaskOk] = useState(true);
@@ -27,7 +27,7 @@ export function PwInput({ id, value, onChange, placeholder, minLength, autoFocus
         type={asText ? "text" : "password"}
         className={!show && maskOk ? "pwmask" : ""}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(numeric ? e.target.value.replace(/\D/g, "").slice(0, 12) : e.target.value)}
         placeholder={placeholder}
         minLength={minLength}
         required
@@ -38,7 +38,8 @@ export function PwInput({ id, value, onChange, placeholder, minLength, autoFocus
         spellCheck={false}
         data-lpignore="true"
         data-1p-ignore="true"
-        inputMode="text"
+        inputMode={numeric ? "numeric" : "text"}
+        pattern={numeric ? "[0-9]*" : undefined}
       />
       <button type="button" className="eye" onClick={() => setShow(!show)} aria-label={show ? "Parolni yashirish" : "Parolni ko'rsatish"} title={show ? "Yashirish" : "Ko'rsatish"}>
         {show ? (
@@ -124,8 +125,8 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
           <p className="hint" style={{ marginTop: -6 }}>Kirgandan keyin yozuvlar bulutda (Supabase) saqlanadi va telefon–kompyuter o'rtasida sinxronlanadi.</p>
           <form onSubmit={submit} autoComplete="off">
             {emailBlock}
-            <label className="label" htmlFor="pw">Parol</label>
-            <PwInput id="pw" value={pass} onChange={setPass} minLength={6} autoFocus />
+            <label className="label" htmlFor="pw">PIN-kod <span className="muted" style={{ fontWeight: 400 }}>· faqat raqam, kamida 6 ta</span></label>
+            <PwInput id="pw" value={pass} onChange={setPass} minLength={6} autoFocus numeric />
             <label className="label" style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
               <input type="checkbox" checked={trusted} onChange={(e) => setTrusted(e.target.checked)} style={{ width: "auto" }} />
               Ishonchli qurilma — keyingi safar parol so'ralmasin

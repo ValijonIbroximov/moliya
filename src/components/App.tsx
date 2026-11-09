@@ -9,6 +9,7 @@ import { flow, totals } from "@/lib/stats";
 import { buildInsights } from "@/lib/insights";
 import Composer from "./Composer";
 import Plans from "./Plans";
+import Widgets, { DEFAULT_WIDGETS, WIDGET_DEFS } from "./Widgets";
 import { runAiAnalysis, shouldAutoRun, savedKey } from "@/lib/ai";
 import { disableLock, enableLock, isLocked, lockEnabled, lockSupported, unlock } from "@/lib/lock";
 import { applyTheme, getTheme, resolved, watchSystemTheme, type Theme } from "@/lib/theme";
@@ -211,6 +212,7 @@ function Shell() {
               );
             })}
           </div>
+          <Widgets computed={computed} accounts={app.accounts} settings={app.settings} onGo={(t) => go(t)} />
           <div className="grid">
             <div className="stack">
               <Composer computed={computed} accounts={app.accounts} note={note} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} focusLine={focusLine} />
@@ -306,6 +308,19 @@ function Shell() {
               {([["auto", "Avto (tizim)"], ["light", "Kunduzgi"], ["dark", "Tungi"]] as const).map(([v, l]) => (
                 <button key={v} type="button" className={theme === v ? "on" : ""} onClick={() => setTheme(v)}>{l}</button>
               ))}
+            </div>
+            <label className="label">Yozuv ekrani vidjetlari</label>
+            <div className="wrap">
+              {WIDGET_DEFS.map(([id, label]) => {
+                const cur = app.settings.widgets ?? DEFAULT_WIDGETS;
+                const on = cur.includes(id);
+                return (
+                  <label key={id} className="chip" style={{ cursor: "pointer", padding: "6px 10px", gap: 6 }}>
+                    <input type="checkbox" checked={on} style={{ width: "auto" }} onChange={() => updateSettings({ widgets: on ? cur.filter((x) => x !== id) : [...cur, id] })} />
+                    {label}
+                  </label>
+                );
+              })}
             </div>
             <label className="label" htmlFor="uiz">Umumiy masshtab · {ui.zoom}%</label>
             <input id="uiz" type="range" min={80} max={115} step={5} value={ui.zoom} onChange={(e) => updateSettings({ ui: { ...ui, zoom: +e.target.value } })} />
