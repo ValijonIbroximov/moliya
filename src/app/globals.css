@@ -189,6 +189,12 @@ small { font-size: 12.5px; }
 .insight p { font-size: 13px; color: var(--ink-2); margin-top: 3px; }
 .insight .act { font-size: 13px; margin-top: 6px; color: var(--ink); font-weight: 600; }
 
+.pwwrap { position: relative; }
+.pwwrap input { padding-right: 46px; }
+.pwmask { -webkit-text-security: disc; }
+.pwwrap .eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; min-height: 34px; padding: 6px 10px; color: var(--muted); display: grid; place-items: center; }
+.pwwrap .eye:hover { color: var(--ink); background: transparent; }
+
 .pchips { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; padding-bottom: 3px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .pchips::-webkit-scrollbar { display: none; }
 .pchips button { flex-shrink: 0; font-size: 13px; padding: 6px 12px; min-height: 34px; border-radius: 999px; }

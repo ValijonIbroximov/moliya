@@ -117,6 +117,15 @@ tests/parser.test.ts  spec misollari + Keep skrinshoti bo'yicha testlar
 - **Tez-tez chiplar**: kamida 3 marta takrorlangan xarajatlar (`K -2 samokat ×20`) bir bosishda yoziladi.
 - **Avtomatik AI**: yoqilsa, ilova ochilganda kuniga bir marta fonda tahlil yangilanadi.
 
+### Parolni tiklash (Telegram orqali)
+
+Kod SMS emas — Telegram'dagi rasmiy **Verification Codes** akkauntidan keladi (Telegram Gateway). Sozlash:
+1. [gateway.telegram.org](https://gateway.telegram.org) ga Telegram akkauntingiz bilan kiring → API token oling.
+2. Vercel env: `TELEGRAM_GATEWAY_TOKEN`, `RESET_PHONE` (+998...), `SUPABASE_SECRET_KEY` (Supabase → API Keys → Secret key), `ALLOWED_EMAILS`.
+3. Kirish oynasida «Parolni unutdingizmi?» → kod Telegram'ga keladi → yangi parol.
+
+Xavfsizlik: tiklash faqat `ALLOWED_EMAILS` dagi emaillar uchun; kod har doim `RESET_PHONE` dagi raqamga boradi (boshqa birov so'rasa ham kod sizga keladi); o'z raqamingizga kod Telegram tomonidan bepul; `SUPABASE_SECRET_KEY` faqat serverda turadi va brauzerga chiqmaydi.
+
 ## 8. Bepul plan limitlari (egress 5 GB/oy)
 
 Moliya trafikni deyarli sarflamaydi: bitta yozuv ≈ 0,5 KB, sinxronizatsiya faqat o'zgargan qatorlarni (`updated_at > lastSync`) oladi, realtime xabarlari bir necha yuz bayt. Oyiga bir necha MB. Egress limiti boshqa loyihalar hisobidan oshsa, tashkilotdagi barcha loyihalar (shu jumladan Moliya) 402 oladi — shuning uchun og'ir loyihani Supabase **Usage → Egress** bo'limida topib yengillating.
