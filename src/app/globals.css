@@ -171,12 +171,15 @@ small { font-size: 12.5px; }
 .balstrip .tot b { color: var(--on-ink); }
 
 /* ---- vidjetlar ---- */
-.widgets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
-.wtile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 9px 11px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-height: 0; width: 100%; }
-.wtile small { font-size: 10.5px; font-weight: 600; color: var(--ink-2); }
-.wtile b { font-size: 14.5px; letter-spacing: -.2px; }
-.wtile .bar { width: 100%; height: 6px; background: var(--surface-2); border-radius: 5px; overflow: hidden; display: block; }
-.wtile .bar i { display: block; height: 100%; border-radius: 5px; }
+.widgets { display: flex; flex-wrap: nowrap; gap: 6px; margin-bottom: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+.widgets::-webkit-scrollbar { display: none; }
+.widgets > span { flex-shrink: 0; display: flex; }
+.wtile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 6px 9px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); min-height: 0; width: 128px; }
+.wtile small { font-size: 9px; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wtile b { font-size: 12.5px; letter-spacing: -.2px; white-space: nowrap; }
+.wtile .bar { width: 100%; height: 4px; background: var(--surface-2); border-radius: 4px; overflow: hidden; display: block; }
+.wtile .bar i { display: block; height: 100%; border-radius: 4px; }
+.wtile svg { height: 22px !important; }
 
 /* ---- composer ---- */
 .segment { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 11px; }
@@ -315,3 +318,28 @@ details.help code { background: var(--surface-2); padding: 1px 5px; border-radiu
   .desktop-only { display: initial; }
   .mobile-only { display: none; }
 }
+
+/* ---- bosh ekran vidjeti (/w) ---- */
+.hw { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px 14px calc(18px + env(safe-area-inset-bottom)); }
+.hwcard { width: min(400px, 100%); border: 0; border-radius: 24px; background: rgba(255,255,255,.08); backdrop-filter: blur(6px); color: #fff; text-align: left; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 18px 50px -18px rgba(0,0,0,.55); min-height: 0; }
+.hwcard:hover { background: rgba(255,255,255,.12); }
+.hwhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.hwhead small { color: rgba(255,255,255,.75); font-size: 12px; }
+.hwbrand { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 15px; }
+.hwmark { width: 24px; height: 24px; border-radius: 7px; background: rgba(255,255,255,.95); color: #16212b; display: grid; place-items: center; font-size: 13px; }
+.hwl { color: rgba(255,255,255,.75); font-size: 11.5px; font-weight: 600; letter-spacing: .2px; }
+.hwbig { font-size: 34px; font-weight: 800; letter-spacing: -1px; line-height: 1.15; }
+.hwmid { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.92); margin-top: 2px; }
+.hwbar { width: 100%; height: 9px; border-radius: 6px; background: rgba(255,255,255,.2); overflow: hidden; margin: 10px 0 6px; }
+.hwbar i { display: block; height: 100%; border-radius: 6px; }
+.hwrows { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.hwrow { display: flex; justify-content: space-between; font-size: 13.5px; color: rgba(255,255,255,.95); border-bottom: 1px solid rgba(255,255,255,.12); padding-bottom: 4px; }
+.hwrow b { font-weight: 750; }
+.hwopen { margin-top: 12px; color: rgba(255,255,255,.65); font-size: 11.5px; }
+.hwpick { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 400px; }
+.hwpick button { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 999px; font-size: 12.5px; padding: 7px 12px; min-height: 34px; }
+.hwpick button.on { background: rgba(255,255,255,.95); color: #16212b; font-weight: 700; }
+.hwpick button:hover { background: rgba(255,255,255,.28); }
+.hwpick button.on:hover { background: #fff; }
+.hwhint { max-width: 400px; text-align: center; color: rgba(255,255,255,.65); font-size: 11.5px; line-height: 1.5; margin: 0; }
+.hwhint b { color: rgba(255,255,255,.9); }

@@ -322,6 +322,7 @@ function Shell() {
                 );
               })}
             </div>
+            <p className="hint" style={{ marginTop: 10 }}>📱 <b>Telefon bosh ekrani uchun vidjetlar:</b> <a href="/w" target="_blank" rel="noopener">vidjetlar sahifasini oching</a>, turini tanlang va brauzer menyusidan «Bosh ekranga qo'shish» qiling — har bir tur alohida ikonka bo'ladi. Ilova ikonkasini uzoq bosganda ham tezkor vidjetlar chiqadi.</p>
             <label className="label" htmlFor="uiz">Umumiy masshtab · {ui.zoom}%</label>
             <input id="uiz" type="range" min={80} max={115} step={5} value={ui.zoom} onChange={(e) => updateSettings({ ui: { ...ui, zoom: +e.target.value } })} />
             <label className="label" htmlFor="uit">Hisob kataklari o'lchami · {ui.tile}px</label>
