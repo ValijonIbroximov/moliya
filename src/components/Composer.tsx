@@ -201,7 +201,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         </div>
       </div>
 
-      <div className="tiles row1">
+      <div className="tiles row1" style={{ marginTop: 14 }}>
         {live.map((a) => <Tile key={a.id} acc={a} on={parts.account === a.code} onClick={() => pickAccount(a.code)} />)}
         <button type="button" className="tile add" onClick={() => onAddAccount()} aria-label="Yangi hisob">+</button>
       </div>
