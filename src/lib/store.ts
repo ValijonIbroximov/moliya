@@ -40,12 +40,12 @@ const PALETTE = ["#dbe8d6", "#d6e4f2", "#e4dcf2", "#f2e3cf", "#f0d6d6", "#d9eeea
 
 export const DEFAULT_ACCOUNTS: Omit<Account, "id" | "updated_at">[] = [
   { code: "Uy", name: "Uyda saqlanayotgan pul", type: "home", currency: "UZS", aliases: ["uy"], color: PALETTE[0], sort: 0, archived: false },
-  { code: "N", name: "Yonimdagi naqd", type: "cash", currency: "UZS", aliases: ["naqd"], color: PALETTE[1], sort: 1, archived: false },
+  { code: "N", name: "Yonimdagi naqd", type: "cash", currency: "UZS", aliases: ["naqd", "yonimda"], color: PALETTE[1], sort: 1, archived: false },
   { code: "K", name: "Karta •••• 3665", type: "card", currency: "UZS", aliases: [], color: PALETTE[2], sort: 2, archived: false },
   { code: "C", name: "Karta •••• 3445", type: "card", currency: "UZS", aliases: [], color: PALETTE[3], sort: 3, archived: false },
   { code: "J", name: "Javohir (qarz)", type: "person", currency: "UZS", aliases: ["javohir"], color: PALETTE[4], sort: 4, archived: false },
-  { code: "U", name: "Uzum Visa", type: "card", currency: "UZS", aliases: ["uzum"], color: PALETTE[5], sort: 5, archived: false },
-  { code: "T", name: "TBC Visa", type: "card", currency: "UZS", aliases: ["tbc"], color: PALETTE[6], sort: 6, archived: false },
+  { code: "U", name: "Uzum Visa", type: "card", currency: "UZS", aliases: ["uzum", "uzum karta"], color: PALETTE[5], sort: 5, archived: false },
+  { code: "T", name: "TBC Visa", type: "card", currency: "UZS", aliases: ["tbc", "tbc visa"], color: PALETTE[6], sort: 6, archived: false },
 ];
 
 export const uid = () =>

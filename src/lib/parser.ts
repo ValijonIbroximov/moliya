@@ -10,7 +10,8 @@ export const normText = (s: string) => normApos(s).replace(/\s+/g, " ").trim().t
 
 const CODE = "[\\p{L}][\\p{L}\\d_'ʻ‘’]*";
 const NUM = "(?:\\d{1,3}(?:[ \\u00a0]\\d{3})+|\\d+)(?:[.,]\\d+)?";
-const EXPR = `[+\\-−]?\\s*\\$?${NUM}(?:\\s*[+\\-−]\\s*\\$?${NUM})*`;
+const TERM = `\\$?${NUM}(?:\\s*[*xх×]\\s*${NUM})*`;
+const EXPR = `[+\\-−]?\\s*${TERM}(?:\\s*[+\\-−]\\s*${TERM})*`;
 
 const RE_ACCOUNT = new RegExp(`^(${CODE})`, "u");
 const RE_TRANSFER = new RegExp(`^\\s*(?:->|→|=>|>)\\s*(${CODE})\\s*(.*)$`, "su");
@@ -19,7 +20,6 @@ const RE_OP = new RegExp(`^\\s*([+\\-−=])\\s*(${EXPR})(.*)$`, "su");
 const RE_EXPECTED = new RegExp(`^\\s*=\\s*([+\\-−]?\\$?${NUM})(.*)$`, "su");
 const RE_UNIT =
   /^\s*(ming|mln|million|mlrd|milliard|so'm|som|sum|uzs|usd|dollar|dollor|eur|evro|rub|rubl|\$|€|₽|k(?![\p{L}\d]))(?![\p{L}])/iu;
-const RE_HINT = new RegExp(`^(${CODE})(?:\\s*(ga|dan|ge|gacha))?$`, "iu");
 
 export interface AccountIndex {
   byCode: Map<string, Account>;
@@ -51,8 +51,8 @@ export function findAccount(idx: AccountIndex, token: string): Account | undefin
 function findAccountLoose(idx: AccountIndex, token: string): Account | undefined {
   const direct = findAccount(idx, token);
   if (direct) return direct;
-  const t = normCode(token);
-  for (const suf of ["dan", "ga", "ge", "gacha"]) {
+  const t = normCode(token).replace(/\s+/g, " ").trim();
+  for (const suf of ["dan", "gacha", "ga", "ge", "da"]) {
     if (t.length > suf.length + 0 && t.endsWith(suf)) {
       const base = t.slice(0, -suf.length);
       if (base) {
@@ -107,16 +107,19 @@ function readUnit(s: string): UnitInfo {
   return { len: 0 };
 }
 
-/** "-24-12" → -36; "52+66" → 118; "1 000" → 1000; "2,5" → 2.5 */
+/** "-24-12" → -36; "52+66" → 118; "3*1.7" → 5.1; "1 000" → 1000; "2,5" → 2.5 */
 export function evalExpr(expr: string): number | null {
-  let e = expr.replace(/−/g, "-").replace(/\$/g, "");
-  e = e.replace(/(\d)[  ](?=\d{3}(?![\d]))/g, "$1");
+  let e = expr.replace(/−/g, "-").replace(/\$/g, "").replace(/[xх×]/g, "*");
+  e = e.replace(/(\d)[ \u00a0](?=\d{3}(?![\d]))/g, "$1");
   e = e.replace(/\s+/g, "");
   if (/[+-]{2}/.test(e)) return null;
-  const terms = e.match(/[+-]?\d+(?:[.,]\d+)?/g);
+  const terms = e.match(/[+-]?\d+(?:[.,]\d+)?(?:\*\d+(?:[.,]\d+)?)*/g);
   if (!terms) return null;
   let sum = 0;
-  for (const t of terms) sum += Number(t.replace(",", "."));
+  for (const t of terms) {
+    const factors = t.split("*").map((f) => Number(f.replace(",", ".")));
+    sum += factors.reduce((a, b) => a * b, 1);
+  }
   return Number.isFinite(sum) ? sum : null;
 }
 
@@ -140,6 +143,12 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
 
   const am = text.match(RE_ACCOUNT);
   if (!am) {
+    // "1189 naqd", "10000 uyda" — raqam oldinda, keyin hisob nomi → qoldiq
+    const nm = text.match(new RegExp(`^(${NUM})\\s*(\\$|usd|so'm|som|ming|k)?\\s+(${CODE}(?:\\s+${CODE})?)\\s*$`, "iu"));
+    if (nm) {
+      const acc0 = findAccountLoose(ctx.accounts, nm[3]);
+      if (acc0) return parseLine(`${acc0.code} = ${nm[1]}${nm[2] ? " " + nm[2] : ""}`, ctx);
+    }
     const fixes: QuickFix[] = ctx.accounts.list.slice(0, 4).map((a) => ({
       label: a.code + " hisobiga",
       line: /^[+\-−=]/.test(text) ? `${a.code} ${text}` : `${a.code} -${text}`,
@@ -213,6 +222,10 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
     after = afterExp;
   }
 
+  // "N -45 = obedga" — "=" dan keyin raqam yo'q: bu izoh
+  const eqText = after.match(/^\s*=\s*(?![+\-−]?\s*\$?\d)(.*)$/su);
+  if (eqText && expected === undefined) after = " " + eqText[1];
+
   const amountFull = round2(value * multiplier);
   if (!Number.isFinite(amountFull) || Math.abs(amountFull) > 1e14)
     return { status: "unclear", account: acc.code, reason: "Summa chegaradan tashqarida" };
@@ -231,19 +244,36 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
     };
   }
 
+  // Valyuta summasi haddan tashqari katta — ehtimol so'mda yozilgan ("C -3583803 dollar 300")
+  if (currency !== "UZS" && Math.abs(value) >= 100_000) {
+    const mk = (ins: string) => text.slice(0, exprEnd) + ins + text.slice(exprEnd);
+    return {
+      status: "unclear",
+      account: acc.code,
+      reason: `${fmtPlain(Math.abs(value))} ${currency} juda katta — so'mda yozmoqchimidingiz?`,
+      fixes: [{ label: "Bu so'mda", line: mk(" so'm") }],
+    };
+  }
+
   let tail = after.trim();
-  if (/^[+\-−=.,\d]/.test(tail))
+  // "N -24 12" (ikkinchi raqam yolg'iz) yoki "= 13400 + 500" — summa tugallanmagan bo'lishi mumkin;
+  // "2l kola", "2 ta ASU", "3 kishi" — oddiy izoh
+  if (/^[+\-−=]\s*\$?\d/.test(tail) || /^\d+(?:[.,]\d+)?(?:\s*$|\s+[+\-−=]?\s*\$?\d)/.test(tail))
     return { status: "unclear", account: acc.code, reason: "Summa yoki qoldiq yozuvi tugallanmagan: “" + tail.slice(0, 12) + "”" };
+  if (/^[+\-−=]/.test(tail)) tail = tail.replace(/^[+\-−=]+\s*/, "");
 
   const uncertain = tail.includes("?");
   if (uncertain) tail = tail.replace(/\?/g, " ").replace(/\s+/g, " ").trim();
 
-  // tailda faqat hisob kodi: "N ga", "Uydan", "J" → o'tkazma ikkinchi tomoni
+  // tailda faqat hisob kodi/nomi: "N ga", "Uydan", "J", "tbc visa", "uzum kartadan" → o'tkazma ikkinchi tomoni
   let counterparty = explicitTarget?.code;
   if (!counterparty && op !== "=" && tail) {
-    const hm = tail.match(RE_HINT);
-    if (hm) {
-      const cand = findAccountLoose(ctx.accounts, hm[1]);
+    const t = normText(tail);
+    const words = t.split(" ");
+    if (words.length <= 3) {
+      let cand = findAccountLoose(ctx.accounts, t);
+      if (!cand && words.length > 1 && ["ga", "dan", "ge", "gacha", "da"].includes(words[words.length - 1]))
+        cand = findAccountLoose(ctx.accounts, words.slice(0, -1).join(" "));
       if (cand && cand.id !== acc.id) {
         counterparty = cand.code;
         tail = "";
@@ -298,12 +328,19 @@ function fmtPlain(n: number): string {
 export function parseNote(note: Note, idx: AccountIndex, todayStr: string): Entry[] {
   const ctx: ParseContext = { accounts: idx, noteDate: note.note_date, unit: note.unit, today: todayStr };
   let date = note.note_date;
+  let lastHeader: string | null = null;
   const lines = note.raw.split(/\r?\n/);
   const out: Entry[] = [];
   lines.forEach((raw, i) => {
-    const p = parseLine(raw, ctx);
+    let p = parseLine(raw, ctx);
     if (p.status === "header") {
-      date = p.date!;
+      if (lastHeader && p.date! < lastHeader) {
+        // "31.08" dan keyin "01.08" — ehtimol oy xato yozilgan; oldingi sana davom etadi
+        p = { status: "unclear", reason: `Sana orqaga ketdi (${raw.trim()} — oldingi sarlavha ${lastHeader.slice(8, 10)}.${lastHeader.slice(5, 7)}). Oy xato bo'lishi mumkin; shu satrdan keyingi yozuvlar oldingi sanada qoladi` };
+      } else {
+        date = p.date!;
+        lastHeader = date;
+      }
     }
     out.push({
       key: note.id + ":" + i,

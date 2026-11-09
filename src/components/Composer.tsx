@@ -171,6 +171,14 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   }, [comValue, computed.comments]);
 
   const noteDate = note?.note_date || todayStr;
+  // Katta yozuvlarda (ko'p kunlik Keep matni) faqat kursor atrofidagi satrlar ko'rsatiladi — telefonda sekinlashmasin
+  const WINDOW = 40;
+  const nonEmpty = previewLines.filter((l) => l.status !== "empty");
+  const big = nonEmpty.length > 90;
+  const visible = big ? nonEmpty.filter((l) => Math.abs(l.line - curLine) <= WINDOW) : nonEmpty;
+  const hiddenAbove = big ? nonEmpty.filter((l) => l.line < curLine - WINDOW).length : 0;
+  const hiddenBelow = big ? nonEmpty.filter((l) => l.line > curLine + WINDOW).length : 0;
+  const notOkCount = nonEmpty.filter((l) => l.status !== "ok" && l.status !== "header").length;
   const dateTiles = Array.from({ length: 6 }, (_, i) => shiftDate(todayStr, -i));
   const unitSel = parts.unit.trim().toLowerCase();
   const unitValue = unitSel === "so'm" || unitSel === "som" || unitSel === "sum" || unitSel === "uzs" ? "som" : unitSel === "ming" || unitSel === "k" ? "ming" : unitSel === "$" || unitSel === "usd" ? "usd" : unitSel === "€" || unitSel === "eur" ? "eur" : "";
@@ -256,11 +264,15 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
 
       {/* Jonli tahlil */}
       <div className="ledger">
-        {previewLines.filter((l) => l.status !== "empty").length === 0 ? (
+        {big && (
+          <p className="hint" style={{ marginBottom: 6 }}>
+            {nonEmpty.length} satr · {notOkCount ? <span className="danger">{notOkCount} tasi tekshirishni kutmoqda</span> : "hammasi o'qildi"} · kursor atrofidagi {visible.length} satr ko'rsatilmoqda{hiddenAbove ? ` (yuqorida ${hiddenAbove}` : ""}{hiddenBelow ? `${hiddenAbove ? ", " : " ("}pastda ${hiddenBelow}` : ""}{hiddenAbove || hiddenBelow ? ")" : ""}. Hammasi «Tarix» va «Tahlil → Tekshirish kerak» da.
+          </p>
+        )}
+        {nonEmpty.length === 0 ? (
           <p className="hint">Yozishni boshlang — har satr darhol tahlil qilinadi va saqlanadi. Saqlash tugmasi yo'q.</p>
         ) : (
-          previewLines.map((l) => {
-            if (l.status === "empty") return null;
+          visible.map((l) => {
             if (l.status === "header") return <div key={l.key} className="lrow" style={{ gridTemplateColumns: "1fr" }}><small>Sana sarlavhasi → {humanDate(l.date, true, true)}</small></div>;
             const e = enriched.get(l.key) || l;
             const acc = e.account ? accByCode.get(e.account) : undefined;

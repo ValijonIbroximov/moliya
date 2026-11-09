@@ -9,12 +9,12 @@ const mk = (code: string, name: string, type: Account["type"], currency: Account
 });
 const accounts: Account[] = [
   mk("Uy", "Uyda saqlanayotgan pul", "home", "UZS", ["uy"]),
-  mk("N", "Naqd", "cash", "UZS", ["naqd"]),
+  mk("N", "Naqd", "cash", "UZS", ["naqd", "yonimda"]),
   mk("K", "Karta 3665", "card"),
   mk("C", "Karta 3445", "card"),
   mk("J", "Javohir", "person", "UZS", ["javohir"]),
-  mk("U", "Uzum Visa", "card"),
-  mk("T", "TBC Visa", "card"),
+  mk("U", "Uzum Visa", "card", "UZS", ["uzum", "uzum karta"]),
+  mk("T", "TBC Visa", "card", "UZS", ["tbc", "tbc visa"]),
 ];
 const idx = indexAccounts(accounts);
 const TODAY = "2026-11-07";
@@ -237,5 +237,55 @@ describe("lineedit", () => {
     const r = replaceLine(t, 1, "N -30 obed");
     expect(r.text).toBe("K -2\nN -30 obed\nC -4");
     expect(r.caret).toBe(15);
+  });
+});
+
+describe("real-world notation (Keep export)", () => {
+  const cases: [string, Record<string, unknown>][] = [
+    ["N -45 = obedga", { status: "ok", amount: -45000, expected: undefined, tail: "obedga", type: "expense" }],
+    ["K +350 = Javohir", { status: "ok", amount: 350000, counterparty: "J", type: "debt" }],
+    ["C -300 = tbc visa", { status: "ok", counterparty: "T", type: "transfer" }],
+    ["N +40 = 385 uzum kartadan", { status: "ok", counterparty: "U", type: "transfer", expected: 385000 }],
+    ["K -3*1.7 = 480 metro", { status: "ok", amount: -5100, expected: 480000 }],
+    ["J +9 = 204 2l kola", { status: "ok", amount: 9000, tail: "2l kola" }],
+    ["K -7.5 = 1094 2 ta ASU Javohir ikkalamizga", { status: "ok", tail: "2 ta ASU Javohir ikkalamizga" }],
+    ["N = 15340 +oylik-kvartira-kredit-mikroqarz", { status: "ok", type: "snapshot", amount: 15_340_000 }],
+    ["1189 naqd", { status: "ok", type: "snapshot", account: "N", amount: 1_189_000 }],
+    ["10000 uyda", { status: "ok", type: "snapshot", account: "Uy", amount: 10_000_000 }],
+    ["340 yonimda", { status: "ok", type: "snapshot", account: "N" }],
+    ["1722 karta", { status: "pending" }],
+    ["C -3583803 dollar 300", { status: "unclear" }],
+    ["C -3583803 so'm dollar 300", { status: "ok", amount: -3_583_803, currency: "UZS" }],
+    ["Uy +12700 = 13400 + 500$ kv", { status: "unclear" }],
+    ["N -24 12", { status: "unclear" }],
+    ["J = 40 + 36 + 25", { status: "ok", amount: 101000 }],
+    ["U = 126 - 126 = 0 Uzum marketga", { status: "ok", type: "snapshot", amount: 0, expected: 0 }],
+    ["N -2 (1t) = 950 hojatxona", { status: "ok", amount: -2000 }],
+    ["K  -1.9-6.5-1.9-1.9-2.6 = 1330 qwat velosiped", { status: "ok", amount: -14800 }],
+    ["Uy -1000 = 11600 Javohirga", { status: "ok", counterparty: "J", type: "debt" }],
+    ["N -250 = 96 kartaga", { status: "ok", type: "expense", counterparty: undefined }],
+  ];
+  for (const [line, exp] of cases) {
+    it(line, () => {
+      const r = parseLine(line, ctx);
+      for (const [k, v] of Object.entries(exp)) expect((r as Record<string, unknown>)[k], k).toEqual(v);
+    });
+  }
+  it("backwards date header is flagged and not applied", () => {
+    const n = note("31.08\nN -10 a\n01.08\nN -20 b\n03.09\nN -30 c", "2026-08-31");
+    const c = compute([n], accounts, defaultSettings(), TODAY);
+    expect(c.ok.map((e) => e.date)).toEqual(["2026-08-31", "2026-08-31", "2026-09-03"]);
+    expect(c.issues.some((i) => i.kind === "unclear" && /orqaga/.test(i.text))).toBe(true);
+  });
+  it("rounding differences under 1000 so'm are not issues", () => {
+    const c = compute([note("K = 662\nK -3.4 = 658 samokat\nK -50 = 608")], accounts, defaultSettings(), TODAY);
+    expect(c.issues.filter((i) => i.kind === "expected_mismatch").length).toBe(0);
+    expect(getCell(c.balances, "K", "UZS").value).toBe(608000);
+  });
+  it("one-sided hint pairs with unhinted other side (kartaga / naqddan)", () => {
+    const c = compute([note("N = 346\nK = 285\nN -250 = 96 kartaga\nK +250 = 535 naqddan")], accounts, defaultSettings(), TODAY);
+    expect(c.ok.filter((e) => e.type === "transfer").length).toBe(2);
+    expect(getCell(c.balances, "N", "UZS").value).toBe(96000);
+    expect(getCell(c.balances, "K", "UZS").value).toBe(535000);
   });
 });

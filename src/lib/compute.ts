@@ -124,8 +124,10 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
   for (const e of ok) {
     const cur = e.currency!;
     const b = cell(balances, e.account!, cur);
+    // yaxlitlash chegarasi: so'mda 1 000 dan kichik farq tafovut hisoblanmaydi (0,7 ming kabi)
+    const tol = cur === "UZS" ? 999.5 : 0.005;
     if (e.type === "snapshot") {
-      if (b.known && Math.abs(b.value - e.amount!) > 0.005) {
+      if (b.known && Math.abs(b.value - e.amount!) > tol) {
         e.diff = round2(e.amount! - b.value);
         issues.push({ kind: "snapshot_diff", entry: e, amount: e.diff, currency: cur, text: `Qoldiq tafovuti: ${e.account}` });
       }
@@ -146,7 +148,7 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
     if (e.expected !== undefined) {
       if (b.known) {
         const d = round2(e.expected - b.value);
-        if (Math.abs(d) > 0.005) {
+        if (Math.abs(d) > tol) {
           e.diff = d;
           issues.push({ kind: "expected_mismatch", entry: e, amount: d, currency: cur, text: `Yozilgan qoldiq hisobga mos emas: ${e.account}` });
         }
