@@ -72,16 +72,38 @@ export function GroupedBars({ data, cur = "UZS", aLabel = "Kirim", bLabel = "Chi
 }
 
 /** Toifalar ulushi — konus gradient + ro'yxat (to'g'ridan-to'g'ri yorliqlar) */
-export function Donut({ rows, total, cur = "UZS" }: { rows: { category: string; amount: number; share: number; count: number }[]; total: number; cur?: Currency }) {
+export function Donut({ rows, total, cur = "UZS", onPick }: { rows: { category: string; amount: number; share: number; count: number }[]; total: number; cur?: Currency; onPick?: (category: string) => void }) {
+  const [sel, setSel] = useState<string | null>(null);
+  const [pulseKey, setPulseKey] = useState(0);
   const top = rows.slice(0, 7);
   const other = rows.slice(7).reduce((s, r) => s + r.amount, 0);
   const segs = [...top.map((r, i) => ({ label: r.category, v: r.amount, c: CAT_COLORS[i] })), ...(other ? [{ label: "boshqa", v: other, c: "#9aa5b1" }] : [])];
   let acc = 0;
   const stops = segs.map((s) => { const from = acc; acc += (s.v / (total || 1)) * 100; return `${s.c} ${from}% ${acc}%`; });
+  /** Diagramma segmentiga bosilganda — pastdagi mos qatorni ajratib ko'rsatamiz */
+  function pickSegment(ev: React.MouseEvent<HTMLDivElement>) {
+    const r = ev.currentTarget.getBoundingClientRect();
+    const dx = ev.clientX - (r.left + r.width / 2);
+    const dy = ev.clientY - (r.top + r.height / 2);
+    const dist = Math.hypot(dx, dy);
+    if (dist > r.width / 2 || dist < 40) return; // halqa tashqarisi yoki ichki teshik
+    let ang = (Math.atan2(dx, -dy) * 180) / Math.PI; // 0° = tepa, soat yo'nalishida
+    if (ang < 0) ang += 360;
+    const share = (ang / 360) * 100;
+    let a2 = 0;
+    for (const s of segs) {
+      a2 += (s.v / (total || 1)) * 100;
+      if (share < a2) {
+        setSel(s.label); setPulseKey((k) => k + 1);
+        setTimeout(() => document.querySelector(".catrow.pulse")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 30);
+        return;
+      }
+    }
+  }
   return (
     <div>
       <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
-        <div style={{ width: 128, height: 128, borderRadius: "50%", background: `conic-gradient(${stops.join(",")})`, display: "grid", placeItems: "center", flexShrink: 0 }} role="img" aria-label={segs.map((s) => `${s.label} ${money(s.v, cur)}`).join(", ")}>
+        <div onClick={pickSegment} style={{ width: 128, height: 128, borderRadius: "50%", background: `conic-gradient(${stops.join(",")})`, display: "grid", placeItems: "center", flexShrink: 0, cursor: "pointer" }} role="img" aria-label={segs.map((s) => `${s.label} ${money(s.v, cur)}`).join(", ")} title="Segmentga bosing — pastdagi qatori yonadi">
           <div style={{ width: 86, height: 86, borderRadius: "50%", background: "var(--surface)", display: "grid", placeContent: "center", textAlign: "center" }}>
             <small style={{ fontSize: 10 }}>jami chiqim</small>
             <b style={{ fontSize: 14 }}>{short(total, cur)}</b>
@@ -93,7 +115,13 @@ export function Donut({ rows, total, cur = "UZS" }: { rows: { category: string; 
       </div>
       <div style={{ marginTop: 10 }}>
         {segs.map((s, i) => (
-          <div key={s.label} className="catrow">
+          <div
+            key={s.label + (sel === s.label ? ":" + pulseKey : "")}
+            className={"catrow" + (sel === s.label ? " pulse" : "") + (onPick && s.label !== "boshqa" ? " click" : "")}
+            role={onPick && s.label !== "boshqa" ? "button" : undefined}
+            title={onPick && s.label !== "boshqa" ? "Tarixda shu toifa chiqimlarini ko'rish" : undefined}
+            onClick={() => { if (onPick && s.label !== "boshqa") onPick(s.label); }}
+          >
             <div className="row">
               <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: s.c, flexShrink: 0 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}{i < top.length ? <small> · {top[i].count} ta</small> : null}</span></span>
               <b style={{ whiteSpace: "nowrap" }}>{short(s.v, cur)} <small>{Math.round((s.v / (total || 1)) * 100)}%</small></b>

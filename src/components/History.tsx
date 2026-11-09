@@ -7,6 +7,8 @@ import { short } from "@/lib/format";
 import { Amount, Badge, Modal, Tile, TypeChip, entryTitle, useToast } from "./ui";
 
 interface Props {
+  cat?: string | null;
+  onClearCat?: () => void;
   computed: Computed;
   accounts: Account[];
   notes: Note[];
@@ -16,7 +18,7 @@ interface Props {
 const TYPES: [string, string][] = [["all", "Barcha turlar"], ["expense", "Chiqim"], ["income", "Kirim"], ["transfer", "O'tkazma"], ["debt", "Qarz"], ["snapshot", "Qoldiq"]];
 const STATES: [string, string][] = [["all", "Barcha holatlar"], ["ok", "Aniq"], ["pending", "Chala"], ["unknown_account", "Noma'lum hisob"], ["unclear", "Noaniq"], ["uncertain", "? belgili"], ["diff", "Tafovutli"], ["nocat", "Toifasiz"]];
 
-export default function History({ computed, accounts, notes, onOpen }: Props) {
+export default function History({ computed, accounts, notes, onOpen, cat, onClearCat }: Props) {
   const [q, setQ] = useState("");
   const [acc, setAcc] = useState<string>("");
   const [type, setType] = useState("all");
@@ -33,6 +35,7 @@ export default function History({ computed, accounts, notes, onOpen }: Props) {
       const e = computed.entries[i];
       if (acc && e.account !== acc && e.counterparty !== acc && e.unknownCode !== acc) continue;
       if (type !== "all" && e.type !== type) continue;
+      if (cat && !(e.type === "expense" && (e.category || "toifasiz") === cat)) continue;
       if (state !== "all") {
         if (state === "uncertain" && !e.uncertain) continue;
         else if (state === "diff" && !e.diff) continue;
@@ -43,7 +46,7 @@ export default function History({ computed, accounts, notes, onOpen }: Props) {
       out.push(e);
     }
     return out;
-  }, [computed, q, acc, type, state]);
+  }, [computed, q, acc, type, state, cat]);
 
   const groups = useMemo(() => {
     const g: { date: string; items: Entry[]; out: number; inc: number }[] = [];
@@ -67,6 +70,11 @@ export default function History({ computed, accounts, notes, onOpen }: Props) {
         <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tur" style={{ width: "auto" }}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select value={state} onChange={(e) => setState(e.target.value)} aria-label="Holat" style={{ width: "auto" }}>{STATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </div>
+      {cat && (
+        <div className="wrap" style={{ marginTop: 8 }}>
+          <button type="button" className="chip warn" onClick={onClearCat} title="Filtrni olib tashlash">Toifa: {cat} · faqat chiqimlar ✕</button>
+        </div>
+      )}
       <div className="tiles row1" style={{ marginTop: 10 }}>
         {accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => <Tile key={a.id} acc={a} small on={acc === a.code} onClick={() => setAcc(acc === a.code ? "" : a.code)} />)}
       </div>

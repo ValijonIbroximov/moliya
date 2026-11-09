@@ -40,6 +40,7 @@ function Shell() {
   const [accDlg, setAccDlg] = useState<{ open: boolean; editing: Account | null; prefill?: string }>({ open: false, editing: null });
   const [authOpen, setAuthOpen] = useState(false);
   const [balHide, setBalHide] = useState(false);
+  const [histCat, setHistCat] = useState<string | null>(null);
   useEffect(() => { try { setBalHide(localStorage.getItem("moliya:balhide") === "1"); } catch { /* bo'sh */ } }, []);
   function toggleBalHide() {
     setBalHide((v) => { try { localStorage.setItem("moliya:balhide", v ? "0" : "1"); } catch { /* bo'sh */ } return !v; });
@@ -279,7 +280,7 @@ function Shell() {
         </section>
       )}
 
-      {tab === "history" && <section className="view"><History computed={computed} accounts={app.accounts} notes={app.notes} onOpen={openEntry} /></section>}
+      {tab === "history" && <section className="view"><History computed={computed} accounts={app.accounts} notes={app.notes} onOpen={openEntry} cat={histCat} onClearCat={() => setHistCat(null)} /></section>}
       {tab === "stats" && (
         <section className="view">
           <div className="segment" style={{ marginBottom: 14, maxWidth: 420 }} role="tablist" aria-label="Tahlil bo'limi">
@@ -287,7 +288,7 @@ function Shell() {
             <button type="button" role="tab" aria-selected={statsView === "ai"} className={statsView === "ai" ? "on" : ""} onClick={() => setStatsView("ai")}>AI maslahat</button>
           </div>
           {statsView === "stats"
-            ? <Stats computed={computed} accounts={app.accounts} settings={app.settings} onOpen={openEntry} onGo={go} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} />
+            ? <Stats computed={computed} accounts={app.accounts} settings={app.settings} onOpen={openEntry} onGo={go} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} onCategory={(c) => { setHistCat(c); go("history"); }} />
             : <AiCenter computed={computed} accounts={app.accounts} settings={app.settings} />}
         </section>
       )}

@@ -16,10 +16,11 @@ interface Props {
   settings: Settings;
   onOpen: (noteId: string, line: number) => void;
   onGo: (tab: "editor" | "history" | "stats" | "accounts" | "ai") => void;
+  onCategory?: (category: string) => void;
   onAddAccount: (prefill?: string) => void;
 }
 
-export default function Stats({ computed, accounts, settings, onOpen, onGo, onAddAccount }: Props) {
+export default function Stats({ computed, accounts, settings, onOpen, onGo, onAddAccount, onCategory }: Props) {
   const [periodKind, setPeriodKind] = useState("30");
   const [cur, setCur] = useState<Currency>("UZS");
   const [chartMode, setChartMode] = useState<"bar" | "line">(() => { try { return localStorage.getItem("moliya:chartmode") === "line" ? "line" : "bar"; } catch { return "bar"; } });
@@ -102,7 +103,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
         <div className="card">
           <h2>Xarajat tarkibi</h2>
           <p className="hint" style={{ marginBottom: 8 }}>{period.label} · faqat chiqimlar</p>
-          {cats.length ? <Donut rows={cats} total={f.expense} cur={cur} /> : <div className="empty"><b>Xarajat yo'q</b>Toifalar yozuvlardan hosil bo'ladi.</div>}
+          {cats.length ? <Donut rows={cats} total={f.expense} cur={cur} onPick={onCategory} /> : <div className="empty"><b>Xarajat yo'q</b>Toifalar yozuvlardan hosil bo'ladi.</div>}
         </div>
       </div>
 
