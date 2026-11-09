@@ -189,7 +189,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ minWidth: 0 }}>
           <h2 style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            {note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv · " + humanDate(noteDate, false)) : "Tezkor yozuv"}
+            {note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv") : "Tezkor yozuv"}
             {noteDate !== todayStr && <span className="chip warn" title="Operatsiyalar shu sanaga yoziladi; sana sarlavhasi bo'lgan satrlar bundan mustasno">eski sana</span>}
           </h2>
           <SaveStatus />
