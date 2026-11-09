@@ -180,6 +180,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const hiddenAbove = big ? nonEmpty.filter((l) => l.line < curLine - WINDOW).length : 0;
   const hiddenBelow = big ? nonEmpty.filter((l) => l.line > curLine + WINDOW).length : 0;
   const notOkCount = nonEmpty.filter((l) => l.status !== "ok" && l.status !== "header").length;
+  const chalaCount = nonEmpty.filter((l) => l.status !== "ok" && l.status !== "header" && l.status !== "note").length;
   const noteUnit = note?.unit ?? 1000;
   const curIsPerson = curAcc?.type === "person";
 
@@ -317,7 +318,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
           {note && note.raw.trim() && <button type="button" className="small danger" onClick={removeNote}>O'chirish</button>}
           {noteUnit === 1 && <span className="chip" title="Bu yozuvda 1 = 1 so'm (Profil → Ma'lumotlar'da o'zgartiriladi)">1 = 1 so'm</span>}
         </div>
-        {noteDate !== todayStr && note?.raw.trim() ? <small>Bu yozuv {humanDate(noteDate, false)} uchun. Bugungi uchun «+ Yangi yozuv».</small> : <small>Chala satr ham saqlanadi.</small>}
+        {noteDate !== todayStr && note?.raw.trim() ? <small>Bu yozuv {humanDate(noteDate, false)} uchun. Bugungi uchun «+ Yangi yozuv».</small> : chalaCount > 0 ? <small>Chala satr ham saqlanadi.</small> : null}
       </div>
 
       <details className="help">
