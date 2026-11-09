@@ -25,7 +25,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const [amtDraft, setAmtDraft] = useState<string | null>(null);
   const todayStr = todayFn();
   const raw = note?.raw ?? "";
-  const live = accounts.filter((a) => !a.archived);
+  const live = accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code));
   const idx = useMemo(() => indexAccounts(accounts), [accounts]);
   const isAccount = (code: string) => !!idx.byCode.get(code.replace(/[ʻ‘’`´ʼ]/g, "'").toLowerCase());
   const accByCode = useMemo(() => new Map(accounts.map((a) => [a.code, a])), [accounts]);
@@ -244,7 +244,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
       </div>
 
       <label className="label">Hisob {curAcc ? <span className="muted" style={{ fontWeight: 400 }}>· {curAcc.name}</span> : <span className="muted" style={{ fontWeight: 400 }}>· matndan ham aniqlanadi</span>}</label>
-      <div className="tiles">
+      <div className="tiles row1">
         {live.map((a) => <Tile key={a.id} acc={a} on={parts.account === a.code} onClick={() => pickAccount(a.code)} />)}
         <button type="button" className="tile add" onClick={() => onAddAccount()} aria-label="Yangi hisob">+</button>
       </div>
@@ -265,7 +265,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
       {parts.op === "->" && (
         <>
           <label className="label">Qaysi hisobga</label>
-          <div className="tiles">
+          <div className="tiles row1">
             {live.filter((a) => a.code !== parts.account).map((a) => <Tile key={a.id} acc={a} small on={parts.target === a.code} onClick={() => pickTarget(a.code)} />)}
           </div>
         </>

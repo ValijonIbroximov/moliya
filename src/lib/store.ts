@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 import type { Account, Note, Settings } from "./types";
 import { defaultSettings } from "./types";
 import { getSupabase, isCloudConfigured } from "./supabase";
+import { normCode } from "./parser";
 import { today } from "./dates";
 
 export type SaveStatus = "idle" | "saving" | "local" | "cloud" | "offline" | "error" | "guest";
@@ -219,10 +220,32 @@ export function updateSettings(patch: Partial<Settings>) {
   afterChange("settings");
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function importData(p: { accounts?: Account[]; notes?: Note[]; settings?: Partial<Settings> }) {
   const t = nowISO();
-  if (p.accounts?.length) state.accounts = p.accounts.map((a) => ({ ...a, updated_at: t }));
-  if (p.notes?.length) state.notes = p.notes.map((n) => ({ ...n, updated_at: t }));
+  if (p.accounts?.length) {
+    // Kod bo'yicha birlashtiramiz: mavjud hisob o'z ID'sini saqlaydi (bulutda dublikat bo'lmasligi uchun)
+    const byCode = new Map(state.accounts.map((a) => [normCode(a.code), a]));
+    const merged = [...state.accounts];
+    for (const inc of p.accounts) {
+      const ex = byCode.get(normCode(inc.code));
+      if (ex) {
+        const i = merged.findIndex((x) => x.id === ex.id);
+        merged[i] = { ...ex, name: inc.name || ex.name, type: inc.type || ex.type, currency: inc.currency || ex.currency, aliases: [...new Set([...(ex.aliases || []), ...(inc.aliases || [])])], updated_at: t };
+      } else {
+        merged.push({ ...inc, id: UUID_RE.test(inc.id || "") ? inc.id : uid(), sort: inc.sort ?? merged.length, updated_at: t });
+      }
+    }
+    state.accounts = merged;
+  }
+  if (p.notes?.length) {
+    const existing = new Set(state.notes.map((n) => n.id));
+    const incoming = p.notes.map((n) => ({ ...n, id: UUID_RE.test(n.id || "") && !existing.has(n.id) ? n.id : UUID_RE.test(n.id || "") ? n.id : uid(), updated_at: t }));
+    const map = new Map(state.notes.map((n) => [n.id, n]));
+    for (const n of incoming) map.set(n.id, n);
+    state.notes = [...map.values()];
+  }
   if (p.settings) state.settings = { ...state.settings, ...p.settings, updated_at: t };
   state.activeNoteId = null;
   emit();
