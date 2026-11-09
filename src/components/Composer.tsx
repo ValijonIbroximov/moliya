@@ -201,7 +201,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         </div>
       </div>
 
-      <label className="label">Hisob {curAcc ? <span className="muted" style={{ fontWeight: 400 }}>· {curAcc.name}</span> : <span className="muted" style={{ fontWeight: 400 }}>· matndan ham aniqlanadi</span>}</label>
       <div className="tiles row1">
         {live.map((a) => <Tile key={a.id} acc={a} on={parts.account === a.code} onClick={() => pickAccount(a.code)} />)}
         <button type="button" className="tile add" onClick={() => onAddAccount()} aria-label="Yangi hisob">+</button>
