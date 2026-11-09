@@ -17,10 +17,11 @@ import Stats from "./Stats";
 import Accounts, { AccountDialog } from "./Accounts";
 import AiCenter from "./AiCenter";
 import AuthDialog from "./Auth";
-import { Amount, Badge, Brand, ICONS, Modal, ToastProvider, TypeChip, entryTitle, useToast } from "./ui";
+import { Amount, Badge, Brand, ICONS, Tile, ToastProvider, TypeChip, entryTitle, useToast } from "./ui";
 
-type Tab = "editor" | "history" | "stats" | "accounts" | "ai";
-const TABS: [Tab, string][] = [["editor", "Yozuv"], ["history", "Tarix"], ["stats", "Tahlil"], ["accounts", "Hisoblar"], ["ai", "AI"]];
+type Tab = "editor" | "history" | "stats" | "accounts" | "ai" | "profile";
+type NavTab = Exclude<Tab, "ai">;
+const TABS: [NavTab, string][] = [["editor", "Yozuv"], ["accounts", "Hisob"], ["history", "Tarix"], ["stats", "Tahlil"], ["profile", "Profil"]];
 
 export default function App() {
   return (
@@ -33,10 +34,11 @@ export default function App() {
 function Shell() {
   const app = useApp();
   const toast = useToast();
-  const [tab, setTab] = useState<Tab>("editor");
+  const [tab, setTab] = useState<NavTab>("editor");
+  const [statsView, setStatsView] = useState<"stats" | "ai">("stats");
   const [accDlg, setAccDlg] = useState<{ open: boolean; editing: Account | null; prefill?: string }>({ open: false, editing: null });
   const [authOpen, setAuthOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const [focusLine, setFocusLine] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const todayStr = today();
@@ -44,6 +46,11 @@ function Shell() {
   const [locked, setLocked] = useState(() => typeof window !== "undefined" && isLocked());
   const [theme, setTheme] = useState<Theme>(() => (typeof window !== "undefined" ? getTheme() : "auto"));
   useEffect(() => { applyTheme(theme); }, [theme]);
+  const ui = app.settings.ui || { zoom: 100, tile: 44 };
+  useEffect(() => {
+    document.documentElement.style.setProperty("--tile", ui.tile + "px");
+    (document.body.style as CSSStyleDeclaration & { zoom?: string }).zoom = ui.zoom === 100 ? "" : String(ui.zoom / 100);
+  }, [ui.zoom, ui.tile]);
   useEffect(() => watchSystemTheme(), []);
   const [lockErr, setLockErr] = useState("");
   useEffect(() => { void initApp(); }, []);
@@ -78,7 +85,11 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.authReady, app.settings.autoAi, computed, locked]);
 
-  function go(t: Tab) { setTab(t); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function go(t: Tab) {
+    if (t === "ai") { setTab("stats"); setStatsView("ai"); }
+    else { setTab(t); if (t === "stats") setStatsView("stats"); }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
   function openEntry(noteId: string, line: number) { setActiveNote(noteId); setFocusLine(line); go("editor"); setTimeout(() => setFocusLine(null), 500); }
   function insertLines(ls: string[]) {
     const n = note && note.note_date === todayStr ? note : createNote(todayStr);
@@ -140,11 +151,12 @@ function Shell() {
 
   return (
     <div className="shell">
+      <div className="pinhead">
       <header className="topbar">
         <Brand />
         <div className="right">
           {app.cloud ? (
-            app.user ? <button type="button" className="small" onClick={() => setSettingsOpen(true)} title={app.user.email}>{(app.user.email || "akkaunt").split("@")[0]}</button>
+            app.user ? <button type="button" className="small" onClick={() => go("profile")} title={app.user.email}>{(app.user.email || "akkaunt").split("@")[0]}</button>
               : app.authReady ? <button type="button" className="small primary" onClick={() => setAuthOpen(true)}>Kirish</button> : null
           ) : <span className="chip warn" title="NEXT_PUBLIC_SUPABASE_URL sozlanmagan">faqat qurilma</span>}
           <button type="button" className="small" onClick={() => setTheme(resolved(theme) === "dark" ? "light" : "dark")} aria-label="Kunduzgi/tungi rejim" title="Kunduzgi/tungi rejim">
@@ -154,7 +166,7 @@ function Shell() {
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>
             )}
           </button>
-          <button type="button" className="small" onClick={() => setSettingsOpen(true)} aria-label="Sozlamalar">⚙</button>
+          <button type="button" className="small" onClick={() => go("profile")} aria-label="Profil va sozlamalar">⚙</button>
         </div>
       </header>
 
@@ -165,6 +177,7 @@ function Shell() {
           </button>
         ))}
       </nav>
+      </div>
 
       {app.pendingMigration > 0 && (
         <div className="insight warn" style={{ gridTemplateColumns: "1fr", marginBottom: 12 }}>
@@ -181,6 +194,19 @@ function Shell() {
 
       {tab === "editor" && (
         <section className="view">
+          <div className="balstrip" aria-label="Hisoblar qoldig'i">
+            <button type="button" className="tot" onClick={() => go("accounts")} title="Tasdiqlangan pul (qarzlarsiz)"><b>{t.known ? short(t.total) : "—"}</b></button>
+            {app.accounts.filter((a) => !a.archived && a.type !== "report").map((a) => {
+              const b = computed.balances[a.code]?.[a.currency];
+              const v = b && (b.known || b.value !== 0) ? short(a.type === "person" ? b.value : b.value, a.currency) : "—";
+              return (
+                <button key={a.id} type="button" onClick={() => go("accounts")} title={a.name + (b?.known ? "" : " · tasdiqlanmagan")}>
+                  <span className="bcode" style={{ ["--t" as string]: a.color }}>{a.code.slice(0, 3)}</span>
+                  <b className={a.type === "person" ? (b && b.value >= 0 ? "amt in" : "amt out") : undefined}>{v}{b && !b.known ? "·?" : ""}</b>
+                </button>
+              );
+            })}
+          </div>
           <div className="grid">
             <div className="stack">
               <Composer computed={computed} accounts={app.accounts} note={note} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} focusLine={focusLine} />
@@ -229,37 +255,76 @@ function Shell() {
       )}
 
       {tab === "history" && <section className="view"><History computed={computed} accounts={app.accounts} onOpen={openEntry} /></section>}
-      {tab === "stats" && <section className="view"><Stats computed={computed} accounts={app.accounts} settings={app.settings} onOpen={openEntry} onGo={go} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} /></section>}
+      {tab === "stats" && (
+        <section className="view">
+          <div className="segment" style={{ marginBottom: 14, maxWidth: 420 }} role="tablist" aria-label="Tahlil bo'limi">
+            <button type="button" role="tab" aria-selected={statsView === "stats"} className={statsView === "stats" ? "on" : ""} onClick={() => setStatsView("stats")}>Statistika</button>
+            <button type="button" role="tab" aria-selected={statsView === "ai"} className={statsView === "ai" ? "on" : ""} onClick={() => setStatsView("ai")}>AI maslahat</button>
+          </div>
+          {statsView === "stats"
+            ? <Stats computed={computed} accounts={app.accounts} settings={app.settings} onOpen={openEntry} onGo={go} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} />
+            : <AiCenter computed={computed} accounts={app.accounts} settings={app.settings} />}
+        </section>
+      )}
       {tab === "accounts" && <section className="view"><Accounts computed={computed} accounts={app.accounts} onWriteBalance={writeBalance} onEdit={(a) => setAccDlg({ open: true, editing: a })} onAdd={() => setAccDlg({ open: true, editing: null })} /></section>}
-      {tab === "ai" && <section className="view"><AiCenter computed={computed} accounts={app.accounts} settings={app.settings} /></section>}
+
+      {tab === "profile" && (
+        <section className="view stack">
+          <div className="card">
+            <div className="row"><h2>Profil</h2>{app.user ? <span className="chip ok">kirilgan</span> : <span className="chip warn">mehmon</span>}</div>
+            <dl className="kv" style={{ marginTop: 10 }}>
+              <dt>Akkaunt</dt><dd>{app.user ? app.user.email : "Mehmon — yozuvlar faqat shu qurilmada"}</dd>
+              <dt>Saqlash</dt><dd>{app.cloud ? (app.user ? "Bulut (Supabase) + shu qurilma" : "Faqat shu qurilma. Kirsangiz — bulut va sinxronizatsiya.") : "Bulut sozlanmagan (Vercel env: NEXT_PUBLIC_SUPABASE_URL)"}</dd>
+              <dt>Holat</dt><dd>{app.online ? "Internet bor" : "Internet yo'q — navbatda"}{app.lastSync ? ` · oxirgi sinx ${new Date(app.lastSync).toLocaleTimeString("uz-UZ", { timeZone: "Asia/Tashkent" })}` : ""}{app.saveError ? ` · ${app.saveError}` : ""}</dd>
+              <dt>Ma'lumot</dt><dd>{app.notes.filter((n) => !n.deleted).length} ta yozuv · {computed.ok.length} ta aniq satr · {app.accounts.length} ta hisob</dd>
+              <dt>Vaqt</dt><dd>Asia/Tashkent · {humanDate(todayStr, true, true)}</dd>
+            </dl>
+            <div className="wrap" style={{ marginTop: 14 }}>
+              {app.cloud && !app.user && <button type="button" className="primary" onClick={() => setAuthOpen(true)}>Kirish / ro'yxatdan o'tish</button>}
+              {app.user && <button type="button" className="danger" onClick={async () => { await signOut(); toast("Chiqdingiz. Yozuvlar bulutda saqlangan."); }}>Chiqish</button>}
+              {lockSupported() && (lockEnabled()
+                ? <button type="button" onClick={() => { disableLock(); toast("Biometrik qulf o'chirildi"); }}>🔓 Biometrik qulfni o'chirish</button>
+                : <button type="button" onClick={() => { enableLock().then(() => toast("Biometrik qulf yoqildi — keyingi ochilishda so'raladi")).catch((e) => toast((e as Error).message)); }}>🔒 Biometrik qulf yoqish</button>)}
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Ko'rinish</h2>
+            <label className="label">Mavzu</label>
+            <div className="segment" role="group" aria-label="Mavzu" style={{ maxWidth: 420 }}>
+              {([["auto", "Avto (tizim)"], ["light", "Kunduzgi"], ["dark", "Tungi"]] as const).map(([v, l]) => (
+                <button key={v} type="button" className={theme === v ? "on" : ""} onClick={() => setTheme(v)}>{l}</button>
+              ))}
+            </div>
+            <label className="label" htmlFor="uiz">Umumiy masshtab · {ui.zoom}%</label>
+            <input id="uiz" type="range" min={80} max={115} step={5} value={ui.zoom} onChange={(e) => updateSettings({ ui: { ...ui, zoom: +e.target.value } })} />
+            <label className="label" htmlFor="uit">Hisob kataklari o'lchami · {ui.tile}px</label>
+            <input id="uit" type="range" min={34} max={60} step={2} value={ui.tile} onChange={(e) => updateSettings({ ui: { ...ui, tile: +e.target.value } })} />
+            <p className="hint" style={{ margin: "8px 0 6px" }}>Oldindan ko'rish — o'zgarish darhol butun ilovaga qo'llanadi:</p>
+            <div className="tiles">
+              {app.accounts.filter((a) => !a.archived).slice(0, 5).map((a) => <Tile key={a.id} acc={a} />)}
+              <Tile acc={app.accounts[0] || { id: "x", code: "N", name: "", type: "cash", currency: "UZS", aliases: [], color: "#d6e4f2", sort: 0, archived: false, updated_at: "" }} small />
+            </div>
+            <div className="wrap" style={{ marginTop: 10 }}>
+              <button type="button" className="small" onClick={() => updateSettings({ ui: { zoom: 100, tile: 44 } })}>Standartga qaytarish</button>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Ma'lumotlar</h2>
+            <p className="hint" style={{ margin: "8px 0 10px" }}>Xom matn hech qachon avtomatik o'zgartirilmaydi. Eksport faylida barcha yozuvlar, hisoblar va sozlamalar bor — zaxira yoki boshqa qurilmaga ko'chirish uchun.</p>
+            <div className="wrap">
+              <button type="button" onClick={doExport}>↓ JSON eksport</button>
+              <button type="button" onClick={() => fileRef.current?.click()}>↑ JSON import</button>
+              <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void doImport(f); e.target.value = ""; }} />
+            </div>
+          </div>
+        </section>
+      )}
 
       <AccountDialog open={accDlg.open} onClose={() => setAccDlg({ open: false, editing: null })} editing={accDlg.editing} prefill={accDlg.prefill} accounts={app.accounts} />
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Sozlamalar va ma'lumotlar">
-        <dl className="kv">
-          <dt>Saqlash</dt><dd>{app.cloud ? (app.user ? `Bulut (Supabase) + shu qurilma · ${app.user.email}` : "Faqat shu qurilma (mehmon). Kirsangiz — bulut va sinxronizatsiya.") : "Faqat shu qurilma — bulut sozlanmagan (Vercel env: NEXT_PUBLIC_SUPABASE_URL)"}</dd>
-          <dt>Holat</dt><dd>{app.online ? "Internet bor" : "Internet yo'q — navbatda"}{app.lastSync ? ` · oxirgi sinx ${new Date(app.lastSync).toLocaleTimeString("uz-UZ", { timeZone: "Asia/Tashkent" })}` : ""}{app.saveError ? ` · ${app.saveError}` : ""}</dd>
-          <dt>Yozuvlar</dt><dd>{app.notes.filter((n) => !n.deleted).length} ta yozuv · {computed.ok.length} ta aniq satr · {app.accounts.length} ta hisob</dd>
-          <dt>Vaqt</dt><dd>Asia/Tashkent · {humanDate(todayStr, true, true)}</dd>
-        </dl>
-        <label className="label">Ko'rinish</label>
-        <div className="segment" role="group" aria-label="Mavzu">
-          {([["auto", "Avto (tizim)"], ["light", "Kunduzgi"], ["dark", "Tungi"]] as const).map(([v, l]) => (
-            <button key={v} type="button" className={theme === v ? "on" : ""} onClick={() => setTheme(v)}>{l}</button>
-          ))}
-        </div>
-        <div className="wrap" style={{ marginTop: 16 }}>
-          {lockSupported() && (lockEnabled()
-            ? <button type="button" onClick={() => { disableLock(); toast("Biometrik qulf o'chirildi"); setSettingsOpen(false); }}>🔓 Biometrik qulfni o'chirish</button>
-            : <button type="button" onClick={() => { enableLock().then(() => toast("Biometrik qulf yoqildi — keyingi ochilishda so'raladi")).catch((e) => toast((e as Error).message)); }}>🔒 Biometrik qulf yoqish</button>)}
-          <button type="button" onClick={doExport}>↓ JSON eksport</button>
-          <button type="button" onClick={() => fileRef.current?.click()}>↑ JSON import</button>
-          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void doImport(f); e.target.value = ""; }} />
-          {app.cloud && !app.user && <button type="button" className="primary" onClick={() => { setSettingsOpen(false); setAuthOpen(true); }}>Kirish / ro'yxatdan o'tish</button>}
-          {app.user && <button type="button" className="danger" onClick={async () => { await signOut(); setSettingsOpen(false); toast("Chiqdingiz. Yozuvlar bulutda saqlangan."); }}>Chiqish</button>}
-        </div>
-        <p className="hint" style={{ marginTop: 14 }}>Xom matn hech qachon avtomatik o'zgartirilmaydi. Eksport faylida barcha yozuvlar, hisoblar va sozlamalar bor — boshqa qurilmaga ko'chirish yoki zaxira uchun.</p>
-      </Modal>
+
     </div>
   );
 }

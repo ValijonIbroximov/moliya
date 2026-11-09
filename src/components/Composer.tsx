@@ -216,7 +216,13 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
           {note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv · " + humanDate(noteDate, false)) : "Tezkor yozuv"}
           {noteDate !== todayStr && <span className="chip warn" title="Operatsiyalar shu sanaga yoziladi; sana sarlavhasi bo'lgan satrlar bundan mustasno">eski sana</span>}
         </h2>
-        <SaveStatus />
+        <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <SaveStatus />
+          <button type="button" className="small primary" onClick={newNote} style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Yangi yozuv
+          </button>
+        </span>
       </div>
 
       <label className="label">Sana</label>
@@ -360,7 +366,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
 
       <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
         <div className="wrap">
-          <button type="button" className="small" onClick={newNote}>+ Yangi yozuv</button>
           {note && note.raw.trim() && <button type="button" className="small danger" onClick={removeNote}>O'chirish</button>}
           <select aria-label="Yozuv birligi" className="small" value={noteUnit} onChange={(e) => { const n = ensureNote(); updateNote(n.id, { unit: +e.target.value === 1 ? 1 : 1000 }); }} style={{ width: "auto" }}>
             <option value={1000}>1 = 1 000 so'm</option>

@@ -48,6 +48,7 @@ export interface Settings {
   confirmedPairs: string[]; // "sigA~sigB"
   rejectedPairs: string[];
   provider: "openai" | "anthropic" | "gemini";
+  ui?: { zoom: number; tile: number }; // interfeys masshtabi (%) va hisob katagi o'lchami (px)
   autoAi?: boolean; // ochilganda kuniga bir marta avtomatik tahlil
   plans?: Plan[];
   lastAi?: AiResult | null;

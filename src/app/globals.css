@@ -90,7 +90,8 @@ small { font-size: 12.5px; }
 
 /* ---- shell ---- */
 .shell { max-width: 1180px; margin: 0 auto; padding: 0 16px calc(var(--nav-h) + 24px); }
-.topbar { position: sticky; top: 0; z-index: 25; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -16px; padding: max(10px, env(safe-area-inset-top)) 16px 8px; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.pinhead { position: sticky; top: 0; z-index: 25; margin: 0 -16px; padding: 0 16px; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: max(10px, env(safe-area-inset-top)) 0 8px; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; letter-spacing: -.4px; }
 .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font-size: 17px; font-weight: 800; position: relative; flex-shrink: 0; box-shadow: 0 2px 6px rgba(22,33,43,.25); }
 .brand .mark span { transform: translateY(-1px); }
@@ -138,15 +139,24 @@ small { font-size: 12.5px; }
 
 /* ---- account tiles ---- */
 .tiles { display: flex; flex-wrap: wrap; gap: 7px; }
-.tile { width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid transparent; background: var(--t, #e8ecef); color: #16212b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; font-weight: 800; font-size: 15px; line-height: 1; letter-spacing: -.2px; }
-.tile small { font-size: 9px; font-weight: 600; color: #3f4b56; letter-spacing: 0; }
+.tile { width: var(--tile, 44px); height: var(--tile, 44px); border-radius: calc(var(--tile, 44px) * .23); border: 1.5px solid transparent; background: var(--t, #e8ecef); color: #16212b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; font-weight: 800; font-size: clamp(11px, calc(var(--tile, 44px) * .3), 16px); line-height: 1; letter-spacing: -.2px; min-height: 0; }
+.tile small { font-size: max(8px, calc(var(--tile, 44px) * .18)); font-weight: 600; color: #3f4b56; letter-spacing: 0; }
 .tile.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--surface) inset; }
-.tile.add { background: transparent; border: 1.5px dashed var(--line-2); color: var(--muted); font-size: 20px; }
-.tile.sm { width: 38px; height: 38px; font-size: 13px; border-radius: 9px; }
+.tile.add { background: transparent; border: 1.5px dashed var(--line-2); color: var(--muted); font-size: 18px; }
+.tile.sm { width: calc(var(--tile, 44px) * .8); height: calc(var(--tile, 44px) * .8); font-size: 13px; border-radius: calc(var(--tile, 44px) * .19); }
 .tile.sm small { display: none; }
 .badge { width: 40px; height: 40px; border-radius: 10px; background: var(--t, #e8ecef); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; line-height: 1; flex-shrink: 0; color: #16212b; gap: 2px; }
 .badge small { font-size: 8px; font-weight: 600; color: #3f4b56; }
 .badge.unk { background: repeating-linear-gradient(45deg, var(--surface-2) 0 4px, var(--line) 4px 8px); color: var(--muted); }
+
+/* ---- balans lentasi ---- */
+.balstrip { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px 0 6px; }
+.balstrip::-webkit-scrollbar { display: none; }
+.balstrip button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px 4px 5px; min-height: 30px; font-size: 12px; background: var(--surface); }
+.balstrip .bcode { width: 21px; height: 21px; border-radius: 6px; background: var(--t, #e8ecef); color: #16212b; font-weight: 800; font-size: 10px; display: grid; place-items: center; }
+.balstrip b { font-size: 12.5px; white-space: nowrap; }
+.balstrip .tot { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.balstrip .tot b { color: var(--on-ink); }
 
 /* ---- composer ---- */
 .segment { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 11px; }
@@ -261,8 +271,9 @@ details.help code { background: var(--surface-2); padding: 1px 5px; border-radiu
 
 @media (min-width: 900px) {
   .shell { padding: 0 28px 40px; }
-  .topbar { margin: 0 -28px; padding: 14px 28px 10px; }
-  .nav { position: static; background: transparent; border: 0; backdrop-filter: none; padding: 4px 0 14px; gap: 6px; justify-content: flex-start; }
+  .pinhead { margin: 0 -28px; padding: 0 28px; }
+  .topbar { padding: 14px 0 8px; }
+  .nav { position: static; background: transparent; border: 0; backdrop-filter: none; padding: 2px 0 10px; gap: 6px; justify-content: flex-start; }
   .nav button { flex: 0 0 auto; flex-direction: row; gap: 7px; font-size: 14px; padding: 8px 14px; min-height: 40px; }
   .nav button .dot { top: 8px; right: 8px; }
   .nav button svg { width: 18px; height: 18px; }
