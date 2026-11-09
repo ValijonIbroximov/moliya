@@ -158,10 +158,10 @@ export function monthlySeries(ok: Entry[], cur: Currency, todayStr: string, mont
 }
 
 /** Hisob turlari bo'yicha yig'indi (faqat ma'lum qoldiqlar, shaxs hisoblarsiz) */
-export function totals(c: Computed, accounts: Account[], cur: Currency) {
+export function totals(c: Computed, accounts: Account[], cur: Currency, prefs?: Record<string, { excludeTotal?: boolean } | undefined>) {
   let total = 0, home = 0, active = 0, known = 0, all = 0, unknownMove = 0;
   for (const a of accounts) {
-    if (a.archived || a.type === "person" || a.type === "report") continue;
+    if (a.archived || a.type === "person" || a.type === "report" || prefs?.[a.id]?.excludeTotal) continue;
     const b = c.balances[a.code]?.[cur];
     if (!b) continue;
     if (!b.known && b.value === 0) continue;

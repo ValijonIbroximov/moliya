@@ -28,6 +28,12 @@ export interface Note {
   updated_at: string;
 }
 
+/** Hisobning ko'rinish sozlamalari (Settings ichida saqlanadi — jadval o'zgartirish talab qilmaydi) */
+export interface AccountPref {
+  hideHome?: boolean; // bosh sahifadagi qoldiq qatorida ko'rsatilmasin
+  excludeTotal?: boolean; // umumiy (tasdiqlangan) pulga qo'shilmasin
+}
+
 /** Rejalashtirilgan to'lov yoki eslatma (kvartira, pochta puli...) */
 export interface Plan {
   id: string;
@@ -51,6 +57,7 @@ export interface Settings {
   provider: "openai" | "anthropic" | "gemini";
   ui?: { zoom: number; tile: number }; // interfeys masshtabi (%) va hisob katagi o'lchami (px)
   defaultUnit?: 1 | 1000; // yangi yozuvlar birligi: 1 = 1 000 so'm (odatiy) yoki 1 = 1 so'm
+  accountPrefs?: Record<string, AccountPref>; // hisob id -> ko'rinish/jami sozlamalari
   widgets?: string[]; // Yozuv ekranidagi vidjetlar
   autoAi?: boolean; // ochilganda kuniga bir marta avtomatik tahlil
   plans?: Plan[];

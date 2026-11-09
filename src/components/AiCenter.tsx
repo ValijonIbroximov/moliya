@@ -55,7 +55,7 @@ export default function AiCenter({ computed, accounts, settings }: { computed: C
   const [err, setErr] = useState<string | null>(null);
   const [rates, setRates] = useState<Rates | null>(null);
   const todayStr = today();
-  const t = totals(computed, accounts, "UZS");
+  const t = totals(computed, accounts, "UZS", settings.accountPrefs);
   const [depAmount, setDepAmount] = useState<number>(0);
   const [depRate, setDepRate] = useState<string>("");
   const [depMonths, setDepMonths] = useState<number>(12);

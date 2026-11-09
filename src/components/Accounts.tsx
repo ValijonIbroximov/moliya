@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import type { Account, Computed, Currency } from "@/lib/types";
 import { CURRENCIES } from "@/lib/types";
-import { deleteAccount, upsertAccount } from "@/lib/store";
+import { deleteAccount, updateSettings, upsertAccount, useApp } from "@/lib/store";
 import { money, signed } from "@/lib/format";
 import { humanDate } from "@/lib/dates";
 import { ACC_TYPE_LABEL, Badge, Modal, useToast } from "./ui";
@@ -16,6 +16,7 @@ interface Props {
 }
 
 export default function Accounts({ computed, accounts, onWriteBalance, onEdit, onAdd }: Props) {
+  const prefs = useApp().settings.accountPrefs || {};
   const live = accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code));
   const archived = accounts.filter((a) => a.archived);
 
@@ -47,6 +48,8 @@ export default function Accounts({ computed, accounts, onWriteBalance, onEdit, o
                 <b style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>{a.name}</b>
                 <small style={{ fontSize: 11 }}>
                   {ACC_TYPE_LABEL[a.type]}
+                  {prefs[a.id]?.hideHome ? <span className="muted"> · bosh sahifada yashirin</span> : null}
+                  {prefs[a.id]?.excludeTotal ? <span className="muted"> · jamiga qo'shilmaydi</span> : null}
                   {main && !main.known ? <span style={{ color: "var(--warn)" }}> · qoldiq yozilmagan</span> : main?.lastSnapshot ? ` · ✓ ${humanDate(main.lastSnapshot, false)}` : ""}
                 </small>
               </div>
@@ -88,6 +91,9 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
   const [currency, setCurrency] = useState<Currency>("UZS");
   const [aliases, setAliases] = useState("");
   const [archived, setArchived] = useState(false);
+  const [hideHome, setHideHome] = useState(false);
+  const [exclTotal, setExclTotal] = useState(false);
+  const prefs = useApp().settings.accountPrefs || {};
   useEffect(() => {
     if (!open) return;
     setCode(editing?.code || prefill || "");
@@ -96,6 +102,10 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
     setCurrency(editing?.currency || "UZS");
     setAliases(editing?.aliases?.join(", ") || "");
     setArchived(editing?.archived || false);
+    const pr = editing ? prefs[editing.id] : undefined;
+    setHideHome(pr?.hideHome || false);
+    setExclTotal(pr?.excludeTotal || false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing, prefill]);
 
   function save(e: React.FormEvent) {
@@ -108,7 +118,11 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
     // Qisqartma o'zgarsa, eskisi avtomatik "boshqa nom" bo'lib qoladi — eski yozuvlar tarixi uzilmaydi
     const renamed = editing && editing.code.toLowerCase() !== c.toLowerCase();
     if (renamed && !al.some((x) => x.toLowerCase() === editing.code.toLowerCase())) al.push(editing.code);
-    upsertAccount({ id: editing?.id, code: c, name: name.trim() || c, type, currency, aliases: al, archived, ...(editing ? {} : { sort: accounts.length }) });
+    const saved = upsertAccount({ id: editing?.id, code: c, name: name.trim() || c, type, currency, aliases: al, archived, ...(editing ? {} : { sort: accounts.length }) });
+    const next = { ...prefs };
+    if (hideHome || exclTotal) next[saved.id] = { ...(hideHome ? { hideHome: true } : {}), ...(exclTotal ? { excludeTotal: true } : {}) };
+    else delete next[saved.id];
+    if (JSON.stringify(next[saved.id] || null) !== JSON.stringify(prefs[saved.id] || null)) updateSettings({ accountPrefs: next });
     toast(renamed ? `Qisqartma ${editing.code} → ${c}. Eskisi boshqa nom sifatida qoldi — tarix buzilmaydi` : editing ? "Hisob yangilandi" : `Hisob qo'shildi: ${c}`);
     onClose();
   }
@@ -136,6 +150,8 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
         <label className="label" htmlFor="aal">Boshqa nomlari <span className="muted" style={{ fontWeight: 400 }}>· vergul bilan</span></label>
         <input id="aal" value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="naqd, cash" autoComplete="off" />
         <p className="hint">«Uydan», «naqddan» kabi so'zlar shu nomlar orqali tanib olinadi. Shaxs hisobida musbat qoldiq — u sizga qarzdor, manfiy — siz qarzdorsiz. Satrda «$» yozilsa, shu hisobning dollar qoldig'i alohida yuritiladi.</p>
+        <label className="label" style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={hideHome} onChange={(e) => setHideHome(e.target.checked)} style={{ width: "auto" }} /> Bosh sahifadagi qoldiq qatorida ko'rsatilmasin</label>
+        <label className="label" style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={exclTotal} onChange={(e) => setExclTotal(e.target.checked)} style={{ width: "auto" }} /> Umumiy (tasdiqlangan) pulga qo'shilmasin</label>
         {editing && <label className="label" style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} style={{ width: "auto" }} /> Arxivga olish (yozuvlar saqlanadi, kataklarda ko'rinmaydi)</label>}
         <button className="primary" style={{ marginTop: 16, width: "100%" }}>{editing ? "Saqlash" : "Hisob qo'shish"}</button>
         {editing && (

@@ -9,7 +9,8 @@ import { dailySeries, debts, flow } from "@/lib/stats";
 
 export const WIDGET_DEFS: [string, string][] = [
   ["today", "Bugun (kirim/chiqim)"],
-  ["week", "14 kun grafigi"],
+  ["week", "14 kun chiqim grafigi"],
+  ["income", "14 kun kirim grafigi"],
   ["limit", "Oylik limit"],
   ["goal", "Jamg'arma maqsadi"],
   ["debt", "Qarzlar"],
@@ -36,6 +37,8 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
   const days14 = useMemo(() => dailySeries(computed.ok, { from: shiftDate(todayStr, -13), to: todayStr, label: "" }, "UZS"), [computed, todayStr]);
   const sum14 = days14.reduce((s, d) => s + d.expense, 0);
   const max14 = Math.max(1, ...days14.map((d) => d.expense));
+  const sumIn14 = days14.reduce((s, d) => s + d.income, 0);
+  const maxIn14 = Math.max(1, ...days14.map((d) => d.income));
   const ym = monthOf(todayStr);
   const fMonth = useMemo(() => flow(computed.ok, { from: monthStart(ym), to: todayStr, label: "" }, "UZS", accounts), [computed, accounts, ym, todayStr]);
   const budget = settings.budget || 0;
@@ -70,6 +73,28 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
                 <polygon points={`3,31 ${pts} ${px(li).toFixed(1)},31`} fill="var(--out)" opacity={0.1} />
                 <polyline points={pts} fill="none" stroke="var(--out)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
                 <circle cx={px(li)} cy={py(days14[li]?.expense || 0)} r="2.4" fill="var(--out)" />
+              </>
+            );
+          })()}
+        </svg>
+      </button>
+    )});
+
+  if (enabled.includes("income"))
+    items.push({ id: "income", el: (
+      <button type="button" className="wtile" onClick={() => onGo("stats", "flowchart")}>
+        <small>14 kun kirim · {short(sumIn14)}</small>
+        <svg viewBox="0 0 140 34" width="100%" height="34" aria-label="14 kunlik kirim grafigi">
+          {(() => {
+            const px = (i: number) => 3 + (i * 134) / (days14.length - 1 || 1);
+            const py = (v: number) => 31 - (v / maxIn14) * 27;
+            const pts = days14.map((d, i) => `${px(i).toFixed(1)},${py(d.income).toFixed(1)}`).join(" ");
+            const li = days14.length - 1;
+            return (
+              <>
+                <polygon points={`3,31 ${pts} ${px(li).toFixed(1)},31`} fill="var(--in)" opacity={0.1} />
+                <polyline points={pts} fill="none" stroke="var(--in)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+                <circle cx={px(li)} cy={py(days14[li]?.income || 0)} r="2.4" fill="var(--in)" />
               </>
             );
           })()}

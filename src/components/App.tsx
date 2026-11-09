@@ -67,8 +67,8 @@ function Shell() {
 
   const computed = useMemo(() => compute(app.notes, app.accounts, app.settings, todayStr), [app.notes, app.accounts, app.settings, todayStr]);
   const note = useMemo(() => app.notes.find((n) => n.id === app.activeNoteId && !n.deleted) || null, [app.notes, app.activeNoteId]);
-  const t = totals(computed, app.accounts, "UZS");
-  const tUsd = totals(computed, app.accounts, "USD");
+  const t = totals(computed, app.accounts, "UZS", app.settings.accountPrefs);
+  const tUsd = totals(computed, app.accounts, "USD", app.settings.accountPrefs);
   const fToday = flow(computed.ok, { from: todayStr, to: todayStr, label: "" }, "UZS", app.accounts);
   const insights = useMemo(() => buildInsights(computed, app.accounts, app.settings, todayStr), [computed, app.accounts, app.settings, todayStr]);
   const accByCode = useMemo(() => new Map(app.accounts.map((a) => [a.code, a])), [app.accounts]);
@@ -203,7 +203,7 @@ function Shell() {
           <div className="balwrap">
             <div className="balstrip" aria-label="Hisoblar qoldig'i">
               <button type="button" className="tot" onClick={() => go("accounts")} title="Tasdiqlangan pul (qarzlarsiz)"><b>{balHide ? "•••" : t.known ? short(t.total) : "—"}</b></button>
-              {app.accounts.filter((a) => !a.archived && a.type !== "report").sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => {
+              {app.accounts.filter((a) => !a.archived && a.type !== "report" && !app.settings.accountPrefs?.[a.id]?.hideHome).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => {
                 const row = computed.balances[a.code] || {};
                 const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
                 const main = row[a.currency];

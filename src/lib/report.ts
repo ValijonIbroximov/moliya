@@ -33,7 +33,7 @@ export function buildReport(c: Computed, accounts: Account[], settings: Settings
   const f30 = flow(c.ok, p30, "UZS", accounts);
   const fm = flow(c.ok, pm, "UZS", accounts);
   const fp = flow(c.ok, pp, "UZS", accounts);
-  const t = totals(c, accounts, "UZS");
+  const t = totals(c, accounts, "UZS", settings.accountPrefs);
   const mk = (f: typeof f30, davr: string) => ({ kirim: f.income, chiqim: f.expense, sof: f.net, kunlik_ortacha_chiqim: Math.round(f.expense / f.days), yozuvlar: f.count, davr });
   const diffs = c.issues.filter((i) => i.kind === "snapshot_diff" || i.kind === "expected_mismatch");
   const pend = c.issues.filter((i) => ["pending", "unknown_account", "unclear"].includes(i.kind)).length;

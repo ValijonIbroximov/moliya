@@ -47,8 +47,8 @@ export default function HomeWidget() {
   useEffect(() => { document.title = "Moliya · " + (VARIANTS.find(([id]) => id === v)?.[1] || "Vidjet"); }, [v]);
 
   const c = useMemo(() => compute(app.notes, app.accounts, app.settings, todayStr), [app.notes, app.accounts, app.settings, todayStr]);
-  const t = totals(c, app.accounts, "UZS");
-  const tUsd = totals(c, app.accounts, "USD");
+  const t = totals(c, app.accounts, "UZS", app.settings.accountPrefs);
+  const tUsd = totals(c, app.accounts, "USD", app.settings.accountPrefs);
   const fToday = flow(c.ok, { from: todayStr, to: todayStr, label: "" }, "UZS", app.accounts);
   const ym = monthOf(todayStr);
   const fMonth = flow(c.ok, { from: monthStart(ym), to: todayStr, label: "" }, "UZS", app.accounts);

@@ -35,7 +35,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
   const daily = dailySeries(computed.ok, period, cur);
   const buckets = bucketize(daily, f.days <= 14 ? f.days : f.days <= 35 ? 10 : 12);
   const months = monthlySeries(computed.ok, cur, todayStr, 6);
-  const t = totals(computed, accounts, cur);
+  const t = totals(computed, accounts, cur, settings.accountPrefs);
   const ds = debts(computed, accounts);
   const diffs = computed.issues.filter((i) => (i.kind === "snapshot_diff" || i.kind === "expected_mismatch") && i.currency === cur);
   const insights = useMemo(() => buildInsights(computed, accounts, settings, todayStr), [computed, accounts, settings, todayStr]);

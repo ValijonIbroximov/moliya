@@ -168,7 +168,7 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   const pend = c.issues.filter((i) => ["pending", "unknown_account", "unclear"].includes(i.kind)).length;
   const diffs = c.issues.filter((i) => i.kind === "snapshot_diff" || i.kind === "expected_mismatch");
   const pairs = c.issues.filter((i) => i.kind === "possible_pair").length;
-  const t = totals(c, accounts, "UZS");
+  const t = totals(c, accounts, "UZS", settings.accountPrefs);
   if (pend || diffs.length || pairs || t.known < t.all) {
     const diffSum = diffs.reduce((s, i) => s + (i.amount || 0), 0);
     out.push({
