@@ -159,7 +159,16 @@ function Shell() {
 
   return (
     <div className="shell">
-      <div className="pinhead">
+      <div className="pinhead" ref={(el) => {
+        if (!el) return;
+        const set = () => document.documentElement.style.setProperty("--headh", el.offsetHeight + "px");
+        set();
+        if (!(el as HTMLElement & { _ro?: ResizeObserver })._ro) {
+          const ro = new ResizeObserver(set);
+          ro.observe(el);
+          (el as HTMLElement & { _ro?: ResizeObserver })._ro = ro;
+        }
+      }}>
       <header className="topbar">
         <Brand />
         <div className="right">
