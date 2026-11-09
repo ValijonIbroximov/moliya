@@ -188,7 +188,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const hiddenAbove = big ? nonEmpty.filter((l) => l.line < curLine - WINDOW).length : 0;
   const hiddenBelow = big ? nonEmpty.filter((l) => l.line > curLine + WINDOW).length : 0;
   const notOkCount = nonEmpty.filter((l) => l.status !== "ok" && l.status !== "header").length;
-  const dateTiles = Array.from({ length: 6 }, (_, i) => shiftDate(todayStr, -i));
   const noteUnit = note?.unit ?? 1000;
   const curIsPerson = curAcc?.type === "person";
 
@@ -202,19 +201,12 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
           </h2>
           <SaveStatus />
         </div>
-        <button type="button" className="iconbtn primary" onClick={newNote} aria-label="Yangi yozuv" title="Yangi yozuv">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
-      </div>
-
-      <label className="label">Sana</label>
-      <div className="dates">
-        {dateTiles.map((d, i) => (
-          <button key={d} type="button" className={"day" + (d === noteDate ? " on" : "")} onClick={() => setDate(d)} aria-label={humanDate(d)}>
-            {+d.slice(8, 10)}<small>{i === 0 ? "bugun" : i === 1 ? "kecha" : d.slice(5, 7) + "-oy"}</small>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          <input type="date" value={noteDate} onChange={(e) => setDate(e.target.value)} aria-label="Sana" title="Sana" max={shiftDate(todayStr, 1)} style={{ width: "auto", height: 44, padding: 8, fontSize: 13 }} />
+          <button type="button" className="iconbtn primary" onClick={newNote} aria-label="Yangi yozuv" title="Yangi yozuv">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
-        ))}
-        <input type="date" value={noteDate} onChange={(e) => setDate(e.target.value)} aria-label="Boshqa sana" max={shiftDate(todayStr, 1)} />
+        </div>
       </div>
 
       <label className="label">Hisob {curAcc ? <span className="muted" style={{ fontWeight: 400 }}>· {curAcc.name}</span> : <span className="muted" style={{ fontWeight: 400 }}>· matndan ham aniqlanadi</span>}</label>
