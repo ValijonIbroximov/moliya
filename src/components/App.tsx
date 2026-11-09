@@ -39,6 +39,11 @@ function Shell() {
   const [statsView, setStatsView] = useState<"stats" | "ai">("stats");
   const [accDlg, setAccDlg] = useState<{ open: boolean; editing: Account | null; prefill?: string }>({ open: false, editing: null });
   const [authOpen, setAuthOpen] = useState(false);
+  const [balHide, setBalHide] = useState(false);
+  useEffect(() => { try { setBalHide(localStorage.getItem("moliya:balhide") === "1"); } catch { /* bo'sh */ } }, []);
+  function toggleBalHide() {
+    setBalHide((v) => { try { localStorage.setItem("moliya:balhide", v ? "0" : "1"); } catch { /* bo'sh */ } return !v; });
+  }
 
   const [focusLine, setFocusLine] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -194,22 +199,29 @@ function Shell() {
 
       {tab === "editor" && (
         <section className="view">
-          <div className="balstrip" aria-label="Hisoblar qoldig'i">
-            <button type="button" className="tot" onClick={() => go("accounts")} title="Tasdiqlangan pul (qarzlarsiz)"><b>{t.known ? short(t.total) : "—"}</b></button>
-            {app.accounts.filter((a) => !a.archived && a.type !== "report").sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => {
-              const row = computed.balances[a.code] || {};
-              const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
-              const main = row[a.currency];
-              const txt = cells.length
-                ? cells.map(([cur, b]) => short(b!.value, cur as Currency) + (b!.known ? "" : "·?")).join(" | ")
-                : "—";
-              return (
-                <button key={a.id} type="button" onClick={() => go("accounts")} title={a.name + (main?.known ? "" : " · tasdiqlanmagan")}>
-                  <span className="bcode" style={{ ["--t" as string]: a.color }}>{a.code.slice(0, 3)}</span>
-                  <b className={a.type === "person" ? (main && main.value >= 0 ? "amt in" : "amt out") : undefined}>{txt}</b>
-                </button>
-              );
-            })}
+          <div className="balwrap">
+            <div className="balstrip" aria-label="Hisoblar qoldig'i">
+              <button type="button" className="tot" onClick={() => go("accounts")} title="Tasdiqlangan pul (qarzlarsiz)"><b>{balHide ? "•••" : t.known ? short(t.total) : "—"}</b></button>
+              {app.accounts.filter((a) => !a.archived && a.type !== "report").sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => {
+                const row = computed.balances[a.code] || {};
+                const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
+                const main = row[a.currency];
+                const txt = balHide ? "•••" : cells.length
+                  ? cells.map(([cur, b]) => short(b!.value, cur as Currency) + (b!.known ? "" : "·?")).join(" | ")
+                  : "—";
+                return (
+                  <button key={a.id} type="button" onClick={() => go("accounts")} title={a.name + (main?.known ? "" : " · tasdiqlanmagan")}>
+                    <span className="bcode" style={{ ["--t" as string]: a.color }}>{a.code.slice(0, 3)}</span>
+                    <b className={!balHide && a.type === "person" ? (main && main.value >= 0 ? "amt in" : "amt out") : undefined}>{txt}</b>
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button" className="baleye" onClick={toggleBalHide} aria-label={balHide ? "Qoldiqlarni ko'rsatish" : "Qoldiqlarni yashirish"} title={balHide ? "Ko'rsatish" : "Yashirish"}>
+              {balHide
+                ? <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.5 10.5 0 0 1 12 20c-7 0-10-8-10-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.8 9.8 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M2 2l20 20"/></svg>
+                : <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+            </button>
           </div>
           <Widgets computed={computed} accounts={app.accounts} settings={app.settings} onGo={(t) => go(t)} />
           <div className="grid">

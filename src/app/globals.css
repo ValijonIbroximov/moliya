@@ -162,6 +162,9 @@ small { font-size: 12.5px; }
 .segment.ops button svg { width: 17px; height: 17px; }
 
 /* ---- balans lentasi ---- */
+.balwrap { display: flex; align-items: center; gap: 4px; }
+.balwrap .balstrip { flex: 1; min-width: 0; }
+.baleye { flex-shrink: 0; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 999px; background: var(--surface); color: var(--muted); }
 .balstrip { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px 0 6px; }
 .balstrip::-webkit-scrollbar { display: none; }
 .balstrip button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px 4px 5px; min-height: 30px; font-size: 12px; background: var(--surface); }
