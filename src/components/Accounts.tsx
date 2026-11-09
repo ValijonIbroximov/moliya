@@ -104,9 +104,12 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
     if (!/^[\p{L}][\p{L}\d_'ʻ‘’]{0,11}(?:\s[\p{L}][\p{L}\d_'ʻ‘’]{0,11}){0,2}$/u.test(c)) { toast("Qisqartma harf bilan boshlansin (3 so'zgacha), masalan: Mirzabek aka"); return; }
     const dup = accounts.find((a) => a.id !== editing?.id && (a.code.toLowerCase() === c.toLowerCase() || (a.aliases || []).some((x) => x.toLowerCase() === c.toLowerCase())));
     if (dup) { toast(`"${c}" allaqachon ${dup.code} hisobida ishlatilgan`); return; }
-    const al = aliases.split(/[,\s]+/).map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== c.toLowerCase());
+    const al = aliases.split(/[,\n]+/).map((x) => x.replace(/\s+/g, " ").trim()).filter((x) => x && x.toLowerCase() !== c.toLowerCase());
+    // Qisqartma o'zgarsa, eskisi avtomatik "boshqa nom" bo'lib qoladi — eski yozuvlar tarixi uzilmaydi
+    const renamed = editing && editing.code.toLowerCase() !== c.toLowerCase();
+    if (renamed && !al.some((x) => x.toLowerCase() === editing.code.toLowerCase())) al.push(editing.code);
     upsertAccount({ id: editing?.id, code: c, name: name.trim() || c, type, currency, aliases: al, archived, ...(editing ? {} : { sort: accounts.length }) });
-    toast(editing ? "Hisob yangilandi" : `Hisob qo'shildi: ${c}`);
+    toast(renamed ? `Qisqartma ${editing.code} → ${c}. Eskisi boshqa nom sifatida qoldi — tarix buzilmaydi` : editing ? "Hisob yangilandi" : `Hisob qo'shildi: ${c}`);
     onClose();
   }
 
@@ -115,7 +118,7 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
       <form onSubmit={save}>
         <label className="label" htmlFor="acode">Qisqartma</label>
         <input id="acode" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Masalan: D, Azam, Omonat" maxLength={12} required autoComplete="off" />
-        <p className="hint">Matnda shu qisqartma bilan yoziladi: «{code || "D"} -50». Katta-kichik harf farqi yo'q.</p>
+        <p className="hint">Matnda shu qisqartma bilan yoziladi: «{code || "D"} -50». Katta-kichik harf farqi yo'q.{editing ? " Qisqartmani o'zgartirsangiz, eskisi «boshqa nomlar»da avtomatik qoladi — eski yozuvlar tanilaveradi." : ""}</p>
         <label className="label" htmlFor="aname">Nomi</label>
         <input id="aname" value={name} onChange={(e) => setName(e.target.value)} placeholder="Hisob yoki shaxs nomi" maxLength={80} />
         <div className="fields">
