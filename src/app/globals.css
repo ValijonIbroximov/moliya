@@ -90,7 +90,7 @@ small { font-size: 12.5px; }
 
 /* ---- shell ---- */
 .shell { max-width: 1180px; margin: 0 auto; padding: 0 16px calc(var(--nav-h) + 24px); }
-.pinhead { position: sticky; top: 0; z-index: 25; margin: 0 -16px; padding: 0 16px; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.pinhead { position: sticky; top: 0; z-index: 25; margin: 0 -16px; padding: 0 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: max(10px, env(safe-area-inset-top)) 0 8px; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; letter-spacing: -.4px; }
 .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font-size: 17px; font-weight: 800; position: relative; flex-shrink: 0; box-shadow: 0 2px 6px rgba(22,33,43,.25); }
@@ -101,7 +101,7 @@ small { font-size: 12.5px; }
 .brand .btxt small { font-size: 8px; font-weight: 700; letter-spacing: .8px; color: var(--muted); margin-top: 1px; }
 .topbar .right { display: flex; align-items: center; gap: 8px; }
 
-.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding: 6px 6px max(6px, env(safe-area-inset-bottom)); }
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; background: var(--surface); border-top: 1px solid var(--line); padding: 6px 6px max(6px, env(safe-area-inset-bottom)); }
 .nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; color: var(--muted); font-size: 11px; padding: 6px 4px; min-height: 48px; border-radius: 10px; position: relative; }
 .nav button.active { color: var(--ink); font-weight: 700; background: var(--surface-2); }
 .nav button svg { width: 21px; height: 21px; }
