@@ -29,7 +29,11 @@ Bepul planda 2 ta faol loyiha limiti bor. Yangi loyiha shart emas — jadvallar 
 3. **Authentication → Providers → Email**: yoqilgan. Tezroq bo'lishi uchun *Confirm email* ni o'chirib qo'ysangiz, ro'yxatdan o'tgan zahoti kiriladi.
    - Google bilan kirish kerak bo'lsa: Google provider'ni sozlang va Vercel'da `NEXT_PUBLIC_ENABLE_GOOGLE=1` qo'ying.
 4. **Authentication → URL Configuration**: *Site URL* = Vercel manzilingiz (`https://moliya-….vercel.app`), *Redirect URLs* ga ham shu manzilni qo'shing.
-5. **Project Settings → API** dan `Project URL` va `anon public` kalitni oling → `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+5. **Project Settings → API Keys** dan ikkita qiymatni oling:
+   - `Project URL` (loyiha sahifasidagi **Copy → Project URL**) → `NEXT_PUBLIC_SUPABASE_URL`
+   - **Publishable key** (`sb_publishable_...`) → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   Eski loyihalarda publishable kalit o'rniga **Legacy API Keys → anon** bo'lishi mumkin — u holda `NEXT_PUBLIC_SUPABASE_ANON_KEY` ga yozing. Kod ikkalasini ham qabul qiladi.
+   **Secret key** (`sb_secret_...`) hech qachon `NEXT_PUBLIC_` o'zgaruvchiga yozilmaydi — u RLS'ni chetlab o'tadi.
 
 ## 3. GitHub + Vercel deploy
 

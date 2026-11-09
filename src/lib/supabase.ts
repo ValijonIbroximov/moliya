@@ -4,7 +4,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 let client: SupabaseClient | null | undefined;
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-export const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Yangi "publishable" kalit (sb_publishable_...) eski "anon" kalit o'rnini bosadi — ikkala nom ham qabul qilinadi
+export const SUPABASE_ANON =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export function isCloudConfigured(): boolean {
   return !!(SUPABASE_URL && SUPABASE_ANON);
