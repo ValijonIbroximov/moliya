@@ -162,6 +162,7 @@ small { font-size: 12.5px; }
 .segment.ops button svg { width: 17px; height: 17px; }
 
 /* ---- balans lentasi ---- */
+.card[id] { scroll-margin-top: 72px; }
 .balwrap { display: flex; align-items: center; gap: 4px; }
 .balwrap .balstrip { flex: 1; min-width: 0; }
 .baleye { flex-shrink: 0; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 999px; background: var(--surface); color: var(--muted); }

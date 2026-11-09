@@ -82,7 +82,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
       </div>
 
       <div className="grid">
-        <div className="card">
+        <div className="card" id="flowchart">
           <div className="row"><h2>Kirim va chiqim</h2><span className="chip">{cur}</span></div>
           <p className="hint" style={{ marginBottom: 8 }}>{buckets.length} oraliq · ustunga bosing</p>
           {f.income + f.expense > 0 ? <GroupedBars data={buckets.map((b) => ({ label: b.label, title: `${humanDate(b.from, false)} — ${humanDate(b.to, false)}`, a: b.income, b: b.expense }))} cur={cur} /> : <div className="empty"><b>Bu davrda yozuv yo'q</b>Kirim yoki chiqim yozilsa grafik paydo bo'ladi.</div>}

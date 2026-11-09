@@ -91,10 +91,11 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.authReady, app.settings.autoAi, computed, locked]);
 
-  function go(t: Tab) {
+  function go(t: Tab, anchor?: string) {
     if (t === "ai") { setTab("stats"); setStatsView("ai"); }
     else { setTab(t); if (t === "stats") setStatsView("stats"); }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    else window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function openEntry(noteId: string, line: number) { setActiveNote(noteId); setFocusLine(line); go("editor"); setTimeout(() => setFocusLine(null), 500); }
   function insertLines(ls: string[]) {
@@ -223,7 +224,7 @@ function Shell() {
                 : <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>}
             </button>
           </div>
-          <Widgets computed={computed} accounts={app.accounts} settings={app.settings} onGo={(t) => go(t)} />
+          <Widgets computed={computed} accounts={app.accounts} settings={app.settings} onGo={(t, a) => go(t, a)} />
           <div className="grid">
             <div className="stack">
               <Composer computed={computed} accounts={app.accounts} note={note} onAddAccount={(prefill) => setAccDlg({ open: true, editing: null, prefill })} focusLine={focusLine} />

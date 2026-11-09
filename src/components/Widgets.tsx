@@ -19,7 +19,7 @@ export const DEFAULT_WIDGETS = ["today", "week", "limit", "goal"];
 
 let rateCache: { rate: number; diff: number; date: string } | null | undefined;
 
-export default function Widgets({ computed, accounts, settings, onGo }: { computed: Computed; accounts: Account[]; settings: Settings; onGo: (t: "stats" | "accounts") => void }) {
+export default function Widgets({ computed, accounts, settings, onGo }: { computed: Computed; accounts: Account[]; settings: Settings; onGo: (t: "stats" | "accounts", anchor?: string) => void }) {
   const enabled = settings.widgets ?? DEFAULT_WIDGETS;
   const todayStr = today();
   const [rate, setRate] = useState(rateCache);
@@ -48,7 +48,7 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
 
   if (enabled.includes("today"))
     items.push({ id: "today", el: (
-      <button type="button" className="wtile" onClick={() => onGo("stats")}>
+      <button type="button" className="wtile" onClick={() => onGo("stats", "flowchart")}>
         <small>Bugun</small>
         <b><span className="amt in">+{short(fToday.income)}</span> <span className="amt out">−{short(fToday.expense)}</span></b>
         <small className="muted">{fToday.count} ta yozuv</small>
@@ -57,20 +57,29 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
 
   if (enabled.includes("week"))
     items.push({ id: "week", el: (
-      <button type="button" className="wtile" onClick={() => onGo("stats")}>
+      <button type="button" className="wtile" onClick={() => onGo("stats", "flowchart")}>
         <small>14 kun chiqim · {short(sum14)}</small>
         <svg viewBox="0 0 140 34" width="100%" height="34" aria-label="14 kunlik chiqim grafigi">
-          {days14.map((d, i) => {
-            const h = Math.max(2, (d.expense / max14) * 30);
-            return <rect key={d.date} x={i * 10 + 1} y={32 - h} width={7} height={h} rx={1.5} fill={d.date === todayStr ? "var(--out)" : "var(--line-2)"} />;
-          })}
+          {(() => {
+            const px = (i: number) => 3 + (i * 134) / (days14.length - 1 || 1);
+            const py = (v: number) => 31 - (v / max14) * 27;
+            const pts = days14.map((d, i) => `${px(i).toFixed(1)},${py(d.expense).toFixed(1)}`).join(" ");
+            const li = days14.length - 1;
+            return (
+              <>
+                <polygon points={`3,31 ${pts} ${px(li).toFixed(1)},31`} fill="var(--out)" opacity={0.1} />
+                <polyline points={pts} fill="none" stroke="var(--out)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+                <circle cx={px(li)} cy={py(days14[li]?.expense || 0)} r="2.4" fill="var(--out)" />
+              </>
+            );
+          })()}
         </svg>
       </button>
     )});
 
   if (enabled.includes("limit"))
     items.push({ id: "limit", el: (
-      <button type="button" className="wtile" onClick={() => onGo("stats")}>
+      <button type="button" className="wtile" onClick={() => onGo("stats", "control")}>
         <small>Oylik limit{budget ? "" : " · o'rnatilmagan"}</small>
         {budget ? (
           <>
@@ -86,7 +95,7 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
 
   if (enabled.includes("goal"))
     items.push({ id: "goal", el: (
-      <button type="button" className="wtile" onClick={() => onGo("stats")}>
+      <button type="button" className="wtile" onClick={() => onGo("stats", "control")}>
         <small>{settings.goalName || "Maqsad · o'rnatilmagan"}</small>
         {settings.goalTarget ? (
           <>
