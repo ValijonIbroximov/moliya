@@ -54,7 +54,7 @@ export default function HomeWidget() {
   const fMonth = flow(c.ok, { from: monthStart(ym), to: todayStr, label: "" }, "UZS", app.accounts);
   const days14 = dailySeries(c.ok, { from: shiftDate(todayStr, -13), to: todayStr, label: "" }, "UZS");
   const max14 = Math.max(1, ...days14.map((d) => d.expense));
-  const ds = debts(c, app.accounts);
+  const ds = debts(c, app.accounts, app.settings.accountPrefs);
   const s = app.settings;
   const budget = s.budget || 0;
   const open = () => { location.href = "/"; };

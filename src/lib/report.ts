@@ -48,7 +48,7 @@ export function buildReport(c: Computed, accounts: Account[], settings: Settings
       return { kod: a.code, nom: a.name, tur: a.type, valyuta: a.currency, qoldiq: b?.known ? b.value : null, tasdiqlangan: !!b?.known, oxirgi_tasdiq: b?.lastSnapshot };
     }),
     jami: { mavjud_pul: t.total, uyda: t.home, naqd_va_karta: t.active, tasdiqlangan_hisoblar: `${t.known}/${t.all}` },
-    qarzlar: debts(c, accounts).map((d) => ({ kim: d.account.name, summa: d.value, valyuta: d.cur, izoh: d.value >= 0 ? "menga qarzdor" : "men qarzdorman" })),
+    qarzlar: debts(c, accounts, settings.accountPrefs).map((d) => ({ kim: d.account.name, summa: d.value, valyuta: d.cur, izoh: d.value >= 0 ? "menga qarzdor" : "men qarzdorman" })),
     oqim: { oxirgi_30_kun: mk(f30, `${p30.from} — ${p30.to}`), joriy_oy: mk(fm, `${pm.from} — ${pm.to}`), otgan_oy: mk(fp, `${pp.from} — ${pp.to}`) },
     toifalar_30_kun: byCategory(c.ok, p30, "UZS").slice(0, 12).map((r) => ({ toifa: r.category, summa: r.amount, ulush: Math.round(r.share * 100) + "%", soni: r.count })),
     oylar: monthlySeries(c.ok, "UZS", todayStr, 6).map((m) => ({ oy: m.ym, kirim: m.income, chiqim: m.expense, sof: m.net })),

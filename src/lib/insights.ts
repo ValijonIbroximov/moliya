@@ -147,7 +147,7 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   }
 
   // 5. Qarzlar
-  const ds = debts(c, accounts);
+  const ds = debts(c, accounts, settings.accountPrefs);
   for (const d of ds) {
     if (!d.known && d.value === 0) continue;
     const amtTxt = (v: number) => (d.cur === "UZS" ? num(v / 1000) : num(v) + "$");

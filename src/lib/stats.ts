@@ -175,10 +175,10 @@ export function totals(c: Computed, accounts: Account[], cur: Currency, prefs?: 
 }
 
 /** Shaxs hisoblari: musbat — sizga qarzdor, manfiy — siz qarzdorsiz */
-export function debts(c: Computed, accounts: Account[]) {
+export function debts(c: Computed, accounts: Account[], prefs?: Record<string, { excludeTotal?: boolean } | undefined>) {
   const out: { account: Account; cur: Currency; value: number; known: boolean }[] = [];
   for (const a of accounts) {
-    if (a.archived || a.type !== "person") continue;
+    if (a.archived || a.type !== "person" || prefs?.[a.id]?.excludeTotal) continue;
     const row = c.balances[a.code] || {};
     for (const [cur, b] of Object.entries(row)) {
       if (!b) continue;

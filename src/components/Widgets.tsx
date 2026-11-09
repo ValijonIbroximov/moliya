@@ -43,7 +43,7 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
   const fMonth = useMemo(() => flow(computed.ok, { from: monthStart(ym), to: todayStr, label: "" }, "UZS", accounts), [computed, accounts, ym, todayStr]);
   const budget = settings.budget || 0;
   const leftDays = daysInMonth(ym) - +todayStr.slice(8, 10);
-  const ds = useMemo(() => debts(computed, accounts), [computed, accounts]);
+  const ds = useMemo(() => debts(computed, accounts, settings.accountPrefs), [computed, accounts, settings.accountPrefs]);
   const debtUzs = ds.filter((d) => d.cur === "UZS").reduce((s, d) => s + d.value, 0);
   const debtUsd = ds.filter((d) => d.cur === "USD").reduce((s, d) => s + d.value, 0);
 
