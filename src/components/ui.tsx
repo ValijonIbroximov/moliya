@@ -29,6 +29,7 @@ export function Tile({ acc, on, onClick, small }: { acc: Account; on?: boolean; 
 
 /** Ro'yxatlarda ko'rinadigan sarlavha */
 export function entryTitle(e: Entry): string {
+  if (e.status === "note") return e.comment || e.raw;
   if (e.status !== "ok") return e.raw;
   if (e.type === "total") return "Jami tekshiruv";
   if (e.type === "snapshot") return "Qoldiq " + e.account + (e.comment ? " · " + e.comment : "");
@@ -42,7 +43,7 @@ export function entryTitle(e: Entry): string {
 
 export function TypeChip({ e }: { e: Entry }) {
   if (e.status !== "ok") {
-    const map: Record<string, [string, string]> = { pending: ["Chala", "warn"], unknown_account: ["Noma'lum hisob", "bad"], unclear: ["Noaniq", "bad"] };
+    const map: Record<string, [string, string]> = { pending: ["Chala", "warn"], unknown_account: ["Noma'lum hisob", "bad"], unclear: ["Noaniq", "bad"], note: ["Eslatma", "snap"] };
     const [l, c] = map[e.status] || ["?", "warn"];
     return <span className={`chip ${c}`}>{l}</span>;
   }

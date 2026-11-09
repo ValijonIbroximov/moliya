@@ -66,7 +66,7 @@ function Shell() {
   const fToday = flow(computed.ok, { from: todayStr, to: todayStr, label: "" }, "UZS", app.accounts);
   const insights = useMemo(() => buildInsights(computed, app.accounts, app.settings, todayStr), [computed, app.accounts, app.settings, todayStr]);
   const accByCode = useMemo(() => new Map(app.accounts.map((a) => [a.code, a])), [app.accounts]);
-  const pendingEntries = useMemo(() => computed.entries.filter((e) => e.status !== "ok"), [computed]);
+  const pendingEntries = useMemo(() => computed.entries.filter((e) => e.status !== "ok" && e.status !== "note"), [computed]);
 
   // Avtomatik kunlik AI tahlil: ochilganda, oxirgisi 20 soatdan eski bo'lsa, fonda yangilanadi
   const autoRanRef = useRef(false);

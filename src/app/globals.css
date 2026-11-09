@@ -149,6 +149,11 @@ small { font-size: 12.5px; }
 .badge small { font-size: 8px; font-weight: 600; color: #3f4b56; }
 .badge.unk { background: repeating-linear-gradient(45deg, var(--surface-2) 0 4px, var(--line) 4px 8px); color: var(--muted); }
 
+.acccard { padding: 11px 12px !important; }
+.iconbtn { width: 42px; height: 42px; min-height: 42px; padding: 0; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+.segment.ops button { flex-direction: column; gap: 3px; font-size: 11px; padding: 6px 2px; min-height: 48px; display: flex; align-items: center; justify-content: center; line-height: 1.1; }
+.segment.ops button svg { width: 17px; height: 17px; }
+
 /* ---- balans lentasi ---- */
 .balstrip { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px 0 6px; }
 .balstrip::-webkit-scrollbar { display: none; }

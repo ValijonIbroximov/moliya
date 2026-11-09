@@ -73,6 +73,7 @@ export type EntryStatus =
   | "pending" // hisob/amal/summa yetishmaydi
   | "unknown_account" // noma'lum qisqartma
   | "unclear" // birlik/valyuta noaniq yoki buzilgan yozuv
+  | "note" // eslatma satri (# bilan) — hisobga kirmaydi, tekshiruv talab qilmaydi
   | "header" // sana sarlavhasi
   | "empty";
 

@@ -21,33 +21,40 @@ export default function Accounts({ computed, accounts, onWriteBalance, onEdit, o
   return (
     <div className="stack">
       <div className="row">
-        <p className="muted" style={{ fontSize: 13.5 }}>Qoldiqni yozish uchun hisobni bosing. Dollar alohida, qarzlar pul qoldig'idan tashqarida.</p>
-        <button type="button" className="primary" onClick={onAdd}>+ Hisob</button>
+        <p className="muted" style={{ fontSize: 13 }}>«=» tugmasi — qoldiq yozish. Dollar alohida yuritiladi, qarzlar jami pulga qo'shilmaydi.</p>
+        <button type="button" className="primary" onClick={onAdd} style={{ flexShrink: 0 }}>+ Hisob</button>
       </div>
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: 10 }}>
         {live.map((a) => {
           const row = computed.balances[a.code] || {};
           const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0)) as [Currency, { value: number; known: boolean; lastSnapshot?: string }][];
           const main = row[a.currency];
           return (
-            <div key={a.id} className="card" style={{ padding: 14 }}>
-              <div className="row">
-                <span style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}><Badge acc={a} /><span style={{ minWidth: 0 }}><b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</b><small>{ACC_TYPE_LABEL[a.type]} · {a.currency}{a.aliases?.length ? " · " + a.aliases.join(", ") : ""}</small></span></span>
-                <button type="button" className="ghost small" onClick={() => onEdit(a)} aria-label="Tahrirlash">✎</button>
+            <div key={a.id} className="card acccard">
+              <div className="row" style={{ alignItems: "flex-start" }}>
+                <Badge acc={a} />
+                <span style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                  <button type="button" className="ghost small" style={{ padding: "4px 7px" }} onClick={() => onWriteBalance(a.code)} aria-label="Qoldiq yozish" title="Qoldiq yozish (=)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9.5h12M6 14.5h12"/></svg>
+                  </button>
+                  <button type="button" className="ghost small" style={{ padding: "4px 7px" }} onClick={() => onEdit(a)} aria-label="Tahrirlash" title="Tahrirlash">✎</button>
+                </span>
               </div>
-              <div style={{ marginTop: 12 }}>
-                {cells.length === 0 && <div><div style={{ fontSize: 22, fontWeight: 750 }}>—</div><small>Boshlang'ich qoldiq yozilmagan</small></div>}
+              <b style={{ display: "block", fontSize: 13, margin: "7px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>{a.name}</b>
+              <div style={{ marginTop: 4 }}>
+                {cells.length === 0 && <div className="row"><b style={{ fontSize: 17 }}>—</b><small style={{ fontSize: 10.5 }}>yozilmagan</small></div>}
                 {cells.map(([cur, b]) => (
-                  <div key={cur} style={{ marginBottom: 6 }}>
-                    <div style={{ fontSize: cur === a.currency ? 22 : 16, fontWeight: 750, letterSpacing: -.5 }} className={a.type === "person" ? (b.value >= 0 ? "amt in" : "amt out") : ""}>
-                      {b.known ? money(a.type === "person" ? Math.abs(b.value) : b.value, cur) : signed(b.value, cur) + " (harakat)"}
-                    </div>
-                    <small>{a.type === "person" ? (b.value >= 0 ? "sizga qarzdor" : "siz qarzdorsiz") : b.known ? "tasdiqlangan" + (b.lastSnapshot ? " · " + humanDate(b.lastSnapshot, false) : "") : "qoldiq noma'lum — faqat yozilgan harakat"}</small>
+                  <div key={cur} className="row" style={{ gap: 6, padding: "1px 0" }}>
+                    <b style={{ fontSize: cur === a.currency ? 17 : 14, letterSpacing: -.3, whiteSpace: "nowrap" }} className={a.type === "person" ? (b.value >= 0 ? "amt in" : "amt out") : undefined}>
+                      {b.known ? money(a.type === "person" ? Math.abs(b.value) : b.value, cur) : signed(b.value, cur) + " ·?"}
+                    </b>
+                    <small style={{ fontSize: 10.5, textAlign: "right", whiteSpace: "nowrap" }} title={b.known ? "Tasdiqlangan" + (b.lastSnapshot ? " · " + humanDate(b.lastSnapshot, false) : "") : "Qoldiq yozilmagan — faqat harakat yig'indisi"}>
+                      {a.type === "person" ? (b.value >= 0 ? "qarzdor" : "berasiz") : b.known ? "✓" : "·?"}
+                    </small>
                   </div>
                 ))}
-                {!main?.known && <small style={{ display: "block", color: "var(--warn)" }}>«{a.code} = …» deb yozsangiz qoldiq tasdiqlanadi.</small>}
+                {!main?.known && cells.length > 0 && <small style={{ display: "block", color: "var(--warn)", fontSize: 10.5 }}>«{a.code} = …» deb tasdiqlang</small>}
               </div>
-              <button type="button" className="small" style={{ marginTop: 10, width: "100%" }} onClick={() => onWriteBalance(a.code)}>= Qoldiq yozish</button>
             </div>
           );
         })}

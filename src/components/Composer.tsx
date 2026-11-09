@@ -107,6 +107,15 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
     applyParts({ ...parts, op: "->", target: code, account: parts.account || live.find((a) => a.code !== code)?.code || "" });
   }
 
+  const isNoteLine = /^\s*(?:#|\/\/)/.test(lines[curLine] || "");
+  /** Joriy satrni eslatma satriga aylantirish / qaytarish */
+  function toggleNoteLine() {
+    const cur = lines[curLine] || "";
+    const nl = isNoteLine ? cur.replace(/^(\s*)(?:#|\/\/)\s?/, "$1") : "# " + cur;
+    const r = replaceLine(raw || "", curLine, nl);
+    setRaw(r.text, r.caret);
+  }
+
   function pickOp(op: LineParts["op"]) {
     const acc = parts.account || live[0]?.code || "";
     let target = parts.target;
@@ -211,18 +220,17 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
 
   return (
     <div className="card" id="composer">
-      <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
-        <h2 style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv · " + humanDate(noteDate, false)) : "Tezkor yozuv"}
-          {noteDate !== todayStr && <span className="chip warn" title="Operatsiyalar shu sanaga yoziladi; sana sarlavhasi bo'lgan satrlar bundan mustasno">eski sana</span>}
-        </h2>
-        <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="row" style={{ alignItems: "flex-start" }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv · " + humanDate(noteDate, false)) : "Tezkor yozuv"}
+            {noteDate !== todayStr && <span className="chip warn" title="Operatsiyalar shu sanaga yoziladi; sana sarlavhasi bo'lgan satrlar bundan mustasno">eski sana</span>}
+          </h2>
           <SaveStatus />
-          <button type="button" className="small primary" onClick={newNote} style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Yangi yozuv
-          </button>
-        </span>
+        </div>
+        <button type="button" className="iconbtn primary" onClick={newNote} aria-label="Yangi yozuv" title="Yangi yozuv">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
       </div>
 
       <label className="label">Sana</label>
@@ -241,10 +249,18 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         <button type="button" className="tile add" onClick={() => onAddAccount()} aria-label="Yangi hisob">+</button>
       </div>
 
-      <div style={{ marginTop: 12 }} className="segment" role="group" aria-label="Amal turi">
-        {([["-", curIsPerson ? "− Qarz kamaydi" : "− Chiqim", "out"], ["+", curIsPerson ? "+ Qarz oshdi" : "+ Kirim", "in"], ["->", "→ O'tkazma", "move"], ["=", "= Qoldiq", "snap"]] as const).map(([op, label, cls]) => (
-          <button key={op} type="button" className={parts.op === op ? `on ${cls}` : ""} onClick={() => pickOp(op)}>{label}</button>
+      <div style={{ marginTop: 12 }} className="segment ops" role="group" aria-label="Amal turi">
+        {([
+          ["-", curIsPerson ? "Qarz kamaydi" : "Chiqim", "out", <svg key="o" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>],
+          ["+", curIsPerson ? "Qarz oshdi" : "Kirim", "in", <svg key="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>],
+          ["->", "O'tkazma", "move", <svg key="m" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>],
+          ["=", "Qoldiq", "snap", <svg key="s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9.5h12M6 14.5h12"/></svg>],
+        ] as const).map(([op, label, cls, icon]) => (
+          <button key={op} type="button" className={parts.op === op ? `on ${cls}` : ""} onClick={() => pickOp(op)}>{icon}{label}</button>
         ))}
+        <button type="button" className={isNoteLine ? "on snap" : ""} onClick={toggleNoteLine} title="Hisobga kirmaydigan izoh satri (# bilan boshlanadi)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 3.5l4 4L8 20l-5 1 1-5z"/></svg>Eslatma
+        </button>
       </div>
       {parts.op === "->" && (
         <>
@@ -320,6 +336,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         ) : (
           visible.map((l) => {
             if (l.status === "header") return <div key={l.key} className="lrow" style={{ gridTemplateColumns: "1fr" }}><small>Sana sarlavhasi → {humanDate(l.date, true, true)}</small></div>;
+            if (l.status === "note") return <div key={l.key} className={`lrow${l.line === curLine ? " cur" : ""}`} style={{ gridTemplateColumns: "1fr" }}><small style={{ fontStyle: "italic" }}>✎ {l.comment || "(bo'sh eslatma)"} <span className="chip snap">eslatma · hisobga kirmaydi</span></small></div>;
             const e = enriched.get(l.key) || l;
             const acc = e.account ? accByCode.get(e.account) : undefined;
             const isCur = l.line === curLine;

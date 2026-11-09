@@ -349,3 +349,12 @@ describe("Jami, aralash valyuta, ko'p so'zli hisoblar", () => {
     expect(c.issues.filter((i) => i.kind === "snapshot_diff").length).toBe(0);
   });
 });
+
+describe("eslatma satrlari", () => {
+  it("# satr hisobga kirmaydi va muammo emas", () => {
+    const c = compute([note("N = 100\n# Mirzabek aka bilan hisob-kitob qoldi\nN -10 obed")], accounts, defaultSettings(), TODAY);
+    expect(getCell(c.balances, "N", "UZS").value).toBe(90000);
+    expect(c.issues.length).toBe(0);
+    expect(c.entries.find((e) => e.status === "note")!.comment).toBe("Mirzabek aka bilan hisob-kitob qoldi");
+  });
+});

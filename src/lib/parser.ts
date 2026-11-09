@@ -137,6 +137,10 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
   const text = normApos(rawLine).trim();
   if (!text) return { status: "empty" };
 
+  // Eslatma satri: "# matn" yoki "// matn"
+  const nm0 = text.match(/^(?:#|\/\/)\s*(.*)$/s);
+  if (nm0) return { status: "note", tail: nm0[1].trim(), comment: nm0[1].trim() };
+
   const header = parseDateHeader(text, ctx.noteDate, ctx.today);
   if (header === "invalid") return { status: "unclear", reason: "Sana noto'g'ri (kun/oy tekshiring)" };
   if (header) return { status: "header", date: header };
