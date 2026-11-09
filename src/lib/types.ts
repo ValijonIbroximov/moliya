@@ -1,6 +1,6 @@
 // Moliya AI — umumiy turlar
 
-export type AccountType = "cash" | "card" | "home" | "person" | "other";
+export type AccountType = "cash" | "card" | "home" | "person" | "other" | "report";
 export type Currency = "UZS" | "USD" | "EUR" | "RUB";
 export const CURRENCIES: Currency[] = ["UZS", "USD", "EUR", "RUB"];
 
@@ -27,6 +27,18 @@ export interface Note {
   updated_at: string;
 }
 
+/** Rejalashtirilgan to'lov yoki eslatma (kvartira, pochta puli...) */
+export interface Plan {
+  id: string;
+  name: string;
+  uzs: number; // so'mda (0 bo'lishi mumkin)
+  usd: number; // dollarda (0 bo'lishi mumkin)
+  day: number; // oyning kuni (1-31); 0 = kunsiz eslatma
+  recurring: boolean; // har oy takrorlanadi
+  account?: string; // qaysi hisobdan to'lanadi
+  lastDone?: string; // oxirgi bajarilgan oy (YYYY-MM)
+}
+
 export interface Settings {
   budget: number; // oylik chiqim chegarasi, so'm
   goalName: string;
@@ -36,6 +48,8 @@ export interface Settings {
   confirmedPairs: string[]; // "sigA~sigB"
   rejectedPairs: string[];
   provider: "openai" | "anthropic" | "gemini";
+  autoAi?: boolean; // ochilganda kuniga bir marta avtomatik tahlil
+  plans?: Plan[];
   lastAi?: AiResult | null;
   updated_at: string;
 }
@@ -61,7 +75,7 @@ export type EntryStatus =
   | "header" // sana sarlavhasi
   | "empty";
 
-export type EntryType = "income" | "expense" | "transfer" | "snapshot" | "debt";
+export type EntryType = "income" | "expense" | "transfer" | "snapshot" | "debt" | "total";
 
 export interface QuickFix {
   label: string;

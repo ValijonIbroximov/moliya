@@ -59,6 +59,7 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
   const bump = (c: string) => catFreq.set(c, (catFreq.get(c) || 0) + 1);
 
   for (const e of ok) {
+    if (e.type === "total") { e.category = "jami"; continue; }
     if (e.type === "snapshot") { e.category = "qoldiq"; e.comment = e.tail || ""; continue; }
     if (e.type === "transfer") { e.category = "o'tkazma"; e.comment = e.tail || ""; continue; }
     if (e.type === "debt" && e.counterparty) { e.category = "qarz"; e.comment = e.tail || ""; continue; }
@@ -79,7 +80,7 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
   const issues: Issue[] = [];
   for (const e of ok) e.sig = entrySig(e);
 
-  const pairable = (e: Entry) => e.status === "ok" && e.type !== "snapshot" && !e.pairedWith && e.amount !== 0;
+  const pairable = (e: Entry) => e.status === "ok" && e.type !== "snapshot" && e.type !== "total" && !e.pairedWith && e.amount !== 0;
   for (let i = 0; i < ok.length; i++) {
     const e = ok[i];
     if (!pairable(e)) continue;
@@ -123,6 +124,25 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
   for (const a of accounts) cell(balances, a.code, a.currency);
   for (const e of ok) {
     const cur = e.currency!;
+    if (e.type === "total") {
+      // Jami = Uy+N+K+C+U+T... (shaxs va qayd hisoblaridan tashqari, faqat ma'lum UZS qoldiqlar)
+      let sum = 0;
+      let unknownCnt = 0;
+      for (const a of accounts) {
+        if (a.archived || a.type === "person" || a.type === "report") continue;
+        const bb = balances[a.code]?.["UZS"];
+        if (!bb) continue;
+        if (bb.known) sum = round2(sum + bb.value);
+        else if (bb.value !== 0) unknownCnt++;
+      }
+      e.balanceAfter = sum;
+      const d = round2(e.amount! - sum);
+      if (Math.abs(d) > 999.5) {
+        e.diff = d;
+        issues.push({ kind: "snapshot_diff", entry: e, amount: d, currency: "UZS", text: unknownCnt ? `Jami tekshiruv: ${unknownCnt} hisob qoldig'i noma'lum` : "Jami tekshiruv hisobga mos emas" });
+      }
+      continue;
+    }
     const b = cell(balances, e.account!, cur);
     // yaxlitlash chegarasi: so'mda 1 000 dan kichik farq tafovut hisoblanmaydi (0,7 ming kabi)
     const tol = cur === "UZS" ? 999.5 : 0.005;

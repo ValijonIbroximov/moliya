@@ -138,13 +138,14 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   const ds = debts(c, accounts);
   for (const d of ds) {
     if (!d.known && d.value === 0) continue;
+    const amtTxt = (v: number) => (d.cur === "UZS" ? num(v / 1000) : num(v) + "$");
     out.push({
-      id: "debt-" + d.account.code,
+      id: "debt-" + d.account.code + "-" + d.cur,
       icon: "↔",
       severity: d.value < 0 ? "warn" : "info",
       title: d.value >= 0 ? `${d.account.name}: sizga ${money(d.value, d.cur)} qarzdor` : `${d.account.name}: siz ${money(-d.value, d.cur)} qarzdorsiz`,
       text: `${d.known ? "Qoldiq tasdiqlangan" : "Boshlang'ich qoldiq yozilmagan — faqat harakatlar yig'indisi"}. Bu summa mavjud pulga qo'shilmagan.`,
-      action: d.value > 0 ? `Qaytganda: "N +${num(d.value / 1000)} ${d.account.code}" deb yozing.` : d.value < 0 ? `Qaytarganda: "N -${num(-d.value / 1000)} ${d.account.code}" deb yozing.` : undefined,
+      action: d.value > 0 ? `Qaytganda: "N +${amtTxt(d.value)} ${d.account.code}" deb yozing.` : d.value < 0 ? `Qaytarganda: "N -${amtTxt(-d.value)} ${d.account.code}" deb yozing.` : undefined,
       go: "accounts",
     });
   }

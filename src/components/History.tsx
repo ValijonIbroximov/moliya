@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { Account, Computed, Entry } from "@/lib/types";
 import { humanDate, today } from "@/lib/dates";
 import { short } from "@/lib/format";
-import { Amount, Badge, Tile, TypeChip } from "./ui";
+import { Amount, Badge, Tile, TypeChip, entryTitle } from "./ui";
 
 interface Props {
   computed: Computed;
@@ -77,7 +77,7 @@ export default function History({ computed, accounts, onOpen }: Props) {
               <div key={e.key} className="entry" onClick={() => onOpen(e.noteId, e.line)} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === "Enter") onOpen(e.noteId, e.line); }}>
                 <Badge acc={a} code={e.unknownCode || e.account} />
                 <div className="main">
-                  <b>{e.status === "ok" ? (e.type === "transfer" || e.type === "debt" ? `${e.account} → ${e.counterparty || "?"}${e.comment ? " · " + e.comment : ""}` : e.type === "snapshot" ? `Qoldiq ${e.account}${e.comment ? " · " + e.comment : ""}` : (e.category || "toifasiz") + (e.comment ? " · " + e.comment : "")) : e.raw}</b>
+                  <b>{entryTitle(e)}</b>
                   <small>
                     <TypeChip e={e} /> {e.status !== "ok" ? e.reason : <span className="mono">{e.raw.length > 48 ? e.raw.slice(0, 48) + "…" : e.raw}</span>}
                     {e.diff ? <span className="danger"> · tafovut {e.diff > 0 ? "+" : ""}{short(e.diff, e.currency)}</span> : null}

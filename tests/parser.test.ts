@@ -289,3 +289,63 @@ describe("real-world notation (Keep export)", () => {
     expect(getCell(c.balances, "K", "UZS").value).toBe(535000);
   });
 });
+
+describe("Jami, aralash valyuta, ko'p so'zli hisoblar", () => {
+  const acc2 = [...accounts, mk("Mirzabek aka", "Mirzabek aka", "person", "UZS", [])];
+  const idx2 = indexAccounts(acc2);
+  const ctx2 = { accounts: idx2, noteDate: TODAY, unit: 1000 as const, today: TODAY };
+  it("Jami = ... mos kelsa muammo yo'q", () => {
+    const c = compute([note("N = 100\nK = 50\nUy = 20\nJami = 170")], accounts, defaultSettings(), TODAY);
+    const t = c.ok.find((e) => e.type === "total")!;
+    expect(t.amount).toBe(170000);
+    expect(t.balanceAfter).toBe(170000);
+    expect(c.issues.filter((i) => i.kind === "snapshot_diff").length).toBe(0);
+    expect(getCell(c.balances, "N", "UZS").value).toBe(100000); // balansga ta'sir qilmaydi
+  });
+  it("Jami mos kelmasa tafovut chiqadi", () => {
+    const c = compute([note("N = 100\nK = 50\nJami = 160")], accounts, defaultSettings(), TODAY);
+    const t = c.ok.find((e) => e.type === "total")!;
+    expect(t.diff).toBe(10000);
+    expect(c.issues.some((i) => i.kind === "snapshot_diff")).toBe(true);
+  });
+  it("J +100$ + 300 — ikki valyutali qarz ikkiga bo'linadi", () => {
+    const c = compute([note("J +100$ + 300")], accounts, defaultSettings(), TODAY);
+    expect(c.ok.length).toBe(2);
+    expect(getCell(c.balances, "J", "USD").value).toBe(100);
+    expect(getCell(c.balances, "J", "UZS").value).toBe(300000);
+  });
+  it("J = 100$ + 300 — ikki valyutali qoldiq", () => {
+    const c = compute([note("J = 100$ + 300")], accounts, defaultSettings(), TODAY);
+    expect(getCell(c.balances, "J", "USD").value).toBe(100);
+    expect(getCell(c.balances, "J", "UZS").value).toBe(300000);
+    expect(getCell(c.balances, "J", "USD").known).toBe(true);
+  });
+  it("Kv to'lovi: K -500$ + 384 ming kv", () => {
+    const c = compute([note("K = 1000\nK -500$ + 384 ming kv")], accounts, defaultSettings(), TODAY);
+    expect(getCell(c.balances, "K", "USD").value).toBe(-500);
+    expect(getCell(c.balances, "K", "UZS").value).toBe(616000);
+  });
+  it("J 100$ + 300 (amalsiz) — chala, tezkor tugmalar bilan", () => {
+    const r = parseLine("J 100$ + 300", ctx);
+    expect(r.status).toBe("pending");
+    expect(r.fixes?.length).toBe(3);
+    expect(r.fixes![0].line).toBe("J +100$ + 300");
+  });
+  it("Mirzabek aka=450 — ko'p so'zli hisob qoldiq sifatida", () => {
+    const r = parseLine("Mirzabek aka=450", ctx2);
+    expect(r.status).toBe("ok");
+    expect(r.type).toBe("snapshot");
+    expect(r.account).toBe("Mirzabek aka");
+    expect(r.amount).toBe(450000);
+  });
+  it("Noma'lum 'Nurislom aka=200' to'liq ism bilan taklif qilinadi", () => {
+    const r = parseLine("Nurislom aka=200", ctx);
+    expect(r.status).toBe("unknown_account");
+    expect(r.unknownCode).toBe("Nurislom aka");
+  });
+  it("report hisobi jami pulga qo'shilmaydi", () => {
+    const acc3 = [...accounts, mk("Samarqand", "Samarqand safari", "report")];
+    const c = compute([note("N = 100\nSamarqand = 780\nJami = 100")], acc3, defaultSettings(), TODAY);
+    expect(c.issues.filter((i) => i.kind === "snapshot_diff").length).toBe(0);
+  });
+});

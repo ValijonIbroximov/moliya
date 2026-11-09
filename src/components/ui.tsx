@@ -3,11 +3,12 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { Account, Currency, Entry, EntryType } from "@/lib/types";
 import { short, ledger } from "@/lib/format";
 
-export const TYPE_LABEL: Record<EntryType, string> = { income: "Kirim", expense: "Chiqim", transfer: "O'tkazma", snapshot: "Qoldiq", debt: "Qarz" };
-export const TYPE_CLS: Record<EntryType, string> = { income: "in", expense: "out", transfer: "move", snapshot: "snap", debt: "move" };
-export const ACC_TYPE_LABEL: Record<Account["type"], string> = { cash: "naqd", card: "karta", home: "uy", person: "shaxs", other: "boshqa" };
+export const TYPE_LABEL: Record<EntryType, string> = { income: "Kirim", expense: "Chiqim", transfer: "O'tkazma", snapshot: "Qoldiq", debt: "Qarz", total: "Jami tekshiruv" };
+export const TYPE_CLS: Record<EntryType, string> = { income: "in", expense: "out", transfer: "move", snapshot: "snap", debt: "move", total: "snap" };
+export const ACC_TYPE_LABEL: Record<Account["type"], string> = { cash: "naqd", card: "karta", home: "uy", person: "shaxs", other: "boshqa", report: "qayd" };
 
 export function Badge({ acc, code }: { acc?: Account; code?: string }) {
+  if (!acc && code === "Σ") return <span className="badge" style={{ ["--t" as string]: "#ebe8f8" }} title="Jami tekshiruv">Σ<small>jami</small></span>;
   if (!acc) return <span className="badge unk" title="Noma'lum hisob">{(code || "?").slice(0, 4)}<small>?</small></span>;
   return (
     <span className="badge" style={{ ["--t" as string]: acc.color }} title={`${acc.name} · ${acc.currency}`}>
@@ -26,6 +27,19 @@ export function Tile({ acc, on, onClick, small }: { acc: Account; on?: boolean; 
   );
 }
 
+/** Ro'yxatlarda ko'rinadigan sarlavha */
+export function entryTitle(e: Entry): string {
+  if (e.status !== "ok") return e.raw;
+  if (e.type === "total") return "Jami tekshiruv";
+  if (e.type === "snapshot") return "Qoldiq " + e.account + (e.comment ? " · " + e.comment : "");
+  if (e.type === "transfer" || e.type === "debt") {
+    if (e.counterparty) return `${e.account} → ${e.counterparty}${e.comment ? " · " + e.comment : ""}`;
+    const base = e.type === "debt" ? (e.amount! > 0 ? "qarz oshdi" : "qarz kamaydi") : "o'tkazma";
+    return `${e.account} · ${e.category && e.category !== "qarz" ? e.category : base}${e.comment ? " · " + e.comment : ""}`;
+  }
+  return (e.category || "toifasiz") + (e.comment ? " · " + e.comment : "");
+}
+
 export function TypeChip({ e }: { e: Entry }) {
   if (e.status !== "ok") {
     const map: Record<string, [string, string]> = { pending: ["Chala", "warn"], unknown_account: ["Noma'lum hisob", "bad"], unclear: ["Noaniq", "bad"] };
@@ -40,7 +54,7 @@ export function Amount({ e, cur }: { e: Entry; cur?: Currency }) {
   const c = TYPE_CLS[e.type!];
   const v = e.amount!;
   let text: string;
-  if (e.type === "snapshot") text = "= " + ledger(v, e.currency);
+  if (e.type === "snapshot" || e.type === "total") text = "= " + ledger(v, e.currency);
   else if (e.type === "transfer" || e.type === "debt") text = short(Math.abs(v), e.currency);
   else text = (v > 0 ? "+" : "") + short(v, e.currency);
   void cur;

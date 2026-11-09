@@ -65,12 +65,12 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
             <h2>{period.label}</h2>
             <small>{humanDate(period.from, false)} — {humanDate(period.to, false)} · {f.days} kun, {activeDays} kunda yozuv bor · {cur}</small>
           </div>
-          <div className="wrap">
-            <select value={periodKind} onChange={(e) => setPeriodKind(e.target.value)} aria-label="Davr" style={{ width: "auto" }}>
-              <option value="7">Oxirgi 7 kun</option><option value="30">Oxirgi 30 kun</option><option value="90">Oxirgi 90 kun</option><option value="month">Joriy oy</option><option value="prev">O'tgan oy</option><option value="year">Shu yil</option>
-            </select>
-            {currencies.length > 1 && <select value={cur} onChange={(e) => setCur(e.target.value as Currency)} aria-label="Valyuta" style={{ width: "auto" }}>{currencies.map((c) => <option key={c}>{c}</option>)}</select>}
-          </div>
+          {currencies.length > 1 && <select value={cur} onChange={(e) => setCur(e.target.value as Currency)} aria-label="Valyuta" style={{ width: "auto" }}>{currencies.map((c) => <option key={c}>{c}</option>)}</select>}
+        </div>
+        <div className="pchips" role="tablist" aria-label="Davr">
+          {([["7", "7 kun"], ["30", "30 kun"], ["month", "Joriy oy"], ["prev", "O'tgan oy"], ["90", "90 kun"], ["year", "Yil"]] as const).map(([v, l]) => (
+            <button key={v} type="button" role="tab" aria-selected={periodKind === v} className={periodKind === v ? "on" : ""} onClick={() => setPeriodKind(v)}>{l}</button>
+          ))}
         </div>
         <div className="kpis" style={{ marginTop: 14 }}>
           <div className="kpi"><small>Kirim</small><div className="v amt in">+{short(f.income, cur)}</div>{cmp(f.income, fp.income, true)}</div>
@@ -99,10 +99,10 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
           <div className="row"><h2>Oylar kesimida</h2><span className="chip">6 oy · {cur}</span></div>
           <p className="hint" style={{ marginBottom: 8 }}>Har oy jami kirim va chiqim</p>
           <GroupedBars data={months.map((m) => ({ label: monthShortUz(m.ym), title: monthNameUz(m.ym), a: m.income, b: m.expense }))} cur={cur} height={170} />
-          <table className="table" style={{ marginTop: 8 }}>
+          <div className="tablewrap"><table className="table" style={{ marginTop: 8 }}>
             <thead><tr><th>Oy</th><th className="r">Kirim</th><th className="r">Chiqim</th><th className="r">Sof</th></tr></thead>
             <tbody>{months.map((m) => <tr key={m.ym}><td>{monthNameUz(m.ym)}</td><td className="r amt in">{m.income ? "+" + short(m.income, cur) : "—"}</td><td className="r amt out">{m.expense ? "−" + short(m.expense, cur) : "—"}</td><td className={`r amt ${m.net >= 0 ? "in" : "out"}`}>{m.income || m.expense ? signed(m.net, cur) : "—"}</td></tr>)}</tbody>
-          </table>
+          </table></div>
         </div>
         <div className="stack">
           <div className="card">

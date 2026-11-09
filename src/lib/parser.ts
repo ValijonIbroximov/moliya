@@ -5,7 +5,7 @@ import type { Account, Currency, Entry, Note, QuickFix } from "./types";
 import { parseDateHeader } from "./dates";
 
 export const normApos = (s: string) => s.replace(/[ʻ‘’`´ʼ]/g, "'");
-export const normCode = (s: string) => normApos(s).toLowerCase();
+export const normCode = (s: string) => normApos(s).toLowerCase().replace(/\s+/g, " ").trim();
 export const normText = (s: string) => normApos(s).replace(/\s+/g, " ").trim().toLowerCase();
 
 const CODE = "[\\p{L}][\\p{L}\\d_'ʻ‘’]*";
@@ -141,7 +141,28 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
   if (header === "invalid") return { status: "unclear", reason: "Sana noto'g'ri (kun/oy tekshiring)" };
   if (header) return { status: "header", date: header };
 
-  const am = text.match(RE_ACCOUNT);
+  // "Jami = 20640" — barcha hisoblar yig'indisini tekshirish (pul harakati emas)
+  const jm = text.match(new RegExp(`^(?:jami|total)\\s*=\\s*(${EXPR})(.*)$`, "iu"));
+  if (jm && !findAccount(ctx.accounts, "jami")) {
+    const v = evalExpr(jm[1]);
+    if (v === null) return { status: "unclear", reason: "Jami summasi noto'g'ri" };
+    let aft = jm[2];
+    const ju = readUnit(aft);
+    aft = aft.slice(ju.len).trim();
+    const jmult = ju.multiplier ?? ctx.unit;
+    return { status: "ok", type: "total", amount: Math.round(v * jmult * 100) / 100, currency: "UZS", multiplier: jmult, tail: aft, category: "jami", comment: aft };
+  }
+
+  // Hisob: eng uzun mos prefiks (3 so'zgacha) — "Mirzabek aka", "Uzum karta" ham ishlaydi
+  let am: { text: string; acc?: Account } | null = null;
+  for (let n = 3; n >= 1; n--) {
+    const re = new RegExp(`^(${CODE}(?:\\s+${CODE}){${n - 1}})`, "u");
+    const m = text.match(re);
+    if (!m) continue;
+    const a = findAccount(ctx.accounts, m[1]);
+    if (a) { am = { text: m[1], acc: a }; break; }
+    if (n === 1) am = { text: m[1] };
+  }
   if (!am) {
     // "1189 naqd", "10000 uyda" — raqam oldinda, keyin hisob nomi → qoldiq
     const nm = text.match(new RegExp(`^(${NUM})\\s*(\\$|usd|so'm|som|ming|k)?\\s+(${CODE}(?:\\s+${CODE})?)\\s*$`, "iu"));
@@ -156,13 +177,18 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
     if (/^[\d+\-−=$]/.test(text)) return { status: "pending", reason: "Hisob qisqartmasi yetishmaydi", fixes };
     return { status: "pending", reason: "Tushunarsiz yozuv — hisob, amal va summa kerak" };
   }
-  const codeTok = am[1];
-  const acc = findAccount(ctx.accounts, codeTok);
-  let rest = text.slice(am[0].length);
+  // Noma'lum qisqartma "aka/opa" bilan davom etsa — to'liq ism sifatida olamiz ("Mirzabek aka=450")
+  let codeTok = am.text;
+  let acc = am.acc;
+  if (!acc) {
+    const hm = text.slice(codeTok.length).match(new RegExp(`^\\s+(aka|opa|aya|uka)(?![\\p{L}\\d])`, "iu"));
+    if (hm) codeTok = text.slice(0, codeTok.length + hm[0].length);
+  }
+  let rest = text.slice(codeTok.length);
 
   let explicitTarget: Account | undefined;
   let explicit = false;
-  let restToText = (j: number) => am[0].length + j; // rest indeksini text indeksiga o'tkazish
+  let restToText = (j: number) => codeTok.length + j; // rest indeksini text indeksiga o'tkazish
   let tm = rest.match(RE_TRANSFER);
   if (!tm) {
     const td = rest.match(RE_TRANSFER_DASH);
@@ -189,7 +215,14 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
     if (!r) return { status: "pending", account: acc.code, reason: "Amal (+ − =) va summa yetishmaydi" };
     if (/^[+\-−=]\s*$/.test(r)) return { status: "pending", account: acc.code, reason: "Summa yetishmaydi" };
     if (/^[+\-−=]/.test(r)) return { status: "unclear", account: acc.code, reason: "Summa noto'g'ri yozilgan" };
-    return { status: "pending", account: acc.code, reason: "Amal belgisi (+, −, =) va summa yetishmaydi", tail: r };
+    const opFixes: QuickFix[] | undefined = /^\$?\d/.test(r)
+      ? [
+          { label: acc.type === "person" ? "+ Qarz oshdi" : "+ Kirim", line: `${acc.code} +${r}` },
+          { label: acc.type === "person" ? "− Qarz kamaydi" : "− Chiqim", line: `${acc.code} -${r}` },
+          { label: "= Qoldiq", line: `${acc.code} = ${r}` },
+        ]
+      : undefined;
+    return { status: "pending", account: acc.code, reason: "Amal belgisi (+, −, =) va summa yetishmaydi", tail: r, fixes: opFixes };
   }
   const op = om[1] === "−" ? "-" : om[1];
   const expr = om[2];
@@ -324,6 +357,26 @@ function fmtPlain(n: number): string {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n).replace(/ /g, " ");
 }
 
+/** "J +100$ + 300" → ikkita satr: "J +100$" va "J +300" (ikki valyutali qarz/to'lov) */
+export function expandMixedCurrency(raw: string, idx: AccountIndex): string[] | null {
+  const text = normApos(raw);
+  const m1 = text.match(new RegExp(`^\\s*(${CODE}(?:\\s+${CODE}){0,2})\\s*([+\\-−=])\\s*(${NUM})\\s*\\$\\s*\\+\\s*(${NUM})\\s*(ming|so'm|som)?\\s*([^\\d+\\-−=].*|)$`, "iu"));
+  if (m1 && findAccount(idx, m1[1])) {
+    const tail = (m1[6] || "").trim();
+    const op = m1[2] === "−" ? "-" : m1[2];
+    const sp = op === "=" ? "= " : op;
+    return [`${m1[1]} ${sp}${m1[3]}$${tail ? " " + tail : ""}`, `${m1[1]} ${sp}${m1[4]}${m1[5] ? " " + m1[5] : ""}${tail ? " " + tail : ""}`];
+  }
+  const m2 = text.match(new RegExp(`^\\s*(${CODE}(?:\\s+${CODE}){0,2})\\s*([+\\-−=])\\s*(${NUM})\\s*(ming|so'm|som)?\\s*\\+\\s*(${NUM})\\s*\\$\\s*([^\\d+\\-−=].*|)$`, "iu"));
+  if (m2 && findAccount(idx, m2[1])) {
+    const tail = (m2[6] || "").trim();
+    const op = m2[2] === "−" ? "-" : m2[2];
+    const sp = op === "=" ? "= " : op;
+    return [`${m2[1]} ${sp}${m2[3]}${m2[4] ? " " + m2[4] : ""}${tail ? " " + tail : ""}`, `${m2[1]} ${sp}${m2[5]}$${tail ? " " + tail : ""}`];
+  }
+  return null;
+}
+
 /** Butun yozuvni satrma-satr tahlil qilish; sana sarlavhalari keyingi satrlarga tatbiq etiladi */
 export function parseNote(note: Note, idx: AccountIndex, todayStr: string): Entry[] {
   const ctx: ParseContext = { accounts: idx, noteDate: note.note_date, unit: note.unit, today: todayStr };
@@ -332,6 +385,15 @@ export function parseNote(note: Note, idx: AccountIndex, todayStr: string): Entr
   const lines = note.raw.split(/\r?\n/);
   const out: Entry[] = [];
   lines.forEach((raw, i) => {
+    // Ikki valyutali satr ("J +100$ + 300") — ikkita operatsiyaga bo'linadi, xom matn o'zgarmaydi
+    const mixed = expandMixedCurrency(raw, idx);
+    if (mixed) {
+      mixed.forEach((syn, k) => {
+        const sp = parseLine(syn, ctx);
+        out.push({ key: note.id + ":" + i + (k ? "b" : ""), noteId: note.id, line: i, raw, date, ...sp, status: sp.status! } as Entry);
+      });
+      return;
+    }
     let p = parseLine(raw, ctx);
     if (p.status === "header") {
       if (lastHeader && p.date! < lastHeader) {

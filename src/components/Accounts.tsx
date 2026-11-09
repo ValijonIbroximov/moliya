@@ -74,7 +74,7 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
     if (!open) return;
     setCode(editing?.code || prefill || "");
     setName(editing?.name || "");
-    setType(editing?.type || (prefill && prefill.length > 2 ? "person" : "cash"));
+    setType(editing?.type || (prefill && (/\s(aka|opa|aya|uka)$/i.test(prefill) || prefill.length > 2) ? "person" : "cash"));
     setCurrency(editing?.currency || "UZS");
     setAliases(editing?.aliases?.join(", ") || "");
     setArchived(editing?.archived || false);
@@ -82,8 +82,8 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
 
   function save(e: React.FormEvent) {
     e.preventDefault();
-    const c = code.trim();
-    if (!/^[\p{L}][\p{L}\d_'ʻ‘’]{0,11}$/u.test(c)) { toast("Qisqartma harf bilan boshlansin, 1–12 belgi, bo'shliqsiz"); return; }
+    const c = code.replace(/\s+/g, " ").trim();
+    if (!/^[\p{L}][\p{L}\d_'ʻ‘’]{0,11}(?:\s[\p{L}][\p{L}\d_'ʻ‘’]{0,11}){0,2}$/u.test(c)) { toast("Qisqartma harf bilan boshlansin (3 so'zgacha), masalan: Mirzabek aka"); return; }
     const dup = accounts.find((a) => a.id !== editing?.id && (a.code.toLowerCase() === c.toLowerCase() || (a.aliases || []).some((x) => x.toLowerCase() === c.toLowerCase())));
     if (dup) { toast(`"${c}" allaqachon ${dup.code} hisobida ishlatilgan`); return; }
     const al = aliases.split(/[,\s]+/).map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== c.toLowerCase());
@@ -104,7 +104,7 @@ export function AccountDialog({ open, onClose, editing, prefill, accounts }: { o
           <div>
             <label className="label" htmlFor="atype">Turi</label>
             <select id="atype" value={type} onChange={(e) => setType(e.target.value as Account["type"])}>
-              <option value="cash">Naqd</option><option value="card">Karta</option><option value="home">Uyda saqlanayotgan</option><option value="person">Shaxs / qarz</option><option value="other">Boshqa / vaqtinchalik</option>
+              <option value="cash">Naqd</option><option value="card">Karta</option><option value="home">Uyda saqlanayotgan</option><option value="person">Shaxs / qarz</option><option value="other">Boshqa / vaqtinchalik</option><option value="report">Qayd / safar hisoboti (jami pulga qo'shilmaydi)</option>
             </select>
           </div>
           <div>

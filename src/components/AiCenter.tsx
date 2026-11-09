@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { Account, AiResult, Computed, Settings } from "@/lib/types";
-import { getAccessToken, updateSettings, useApp } from "@/lib/store";
+import { updateSettings, useApp } from "@/lib/store";
+import { runAiAnalysis } from "@/lib/ai";
 import { buildReport, reportAsText, AI_QUESTION_DEFAULT } from "@/lib/report";
 import { today } from "@/lib/dates";
 import { money, num, short } from "@/lib/format";
@@ -77,20 +78,9 @@ export default function AiCenter({ computed, accounts, settings }: { computed: C
   async function run() {
     setBusy(true); setErr(null);
     try {
-      const token = await getAccessToken();
-      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: JSON.stringify({ provider, question, report, apiKey: key.trim() || undefined }) });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || "Noma'lum xato");
-      const res = j.result as { xulosa?: string; takliflar?: AiResult["takliflar"]; kamchiliklar?: string; manbalar_qidiruvdan?: { nom: string; url: string }[] };
-      const ai: AiResult = {
-        provider: j.provider, model: j.model, at: j.at,
-        xulosa: String(res.xulosa || ""),
-        takliflar: Array.isArray(res.takliflar) ? res.takliflar.map((s) => ({ ...s, manbalar: Array.isArray(s.manbalar) ? s.manbalar : [] })) : [],
-        kamchiliklar: res.kamchiliklar ? String(res.kamchiliklar) : undefined,
-        raw: res.manbalar_qidiruvdan?.length ? JSON.stringify(res.manbalar_qidiruvdan) : undefined,
-      };
+      const ai = await runAiAnalysis(provider, question, report, key.trim() || undefined);
       updateSettings({ lastAi: ai, provider });
-      toast(`Tahlil tayyor (${j.model}${j.keySource === "server" ? ", server kaliti" : ""})`);
+      toast(`Tahlil tayyor (${ai.model})`);
     } catch (e) {
       setErr((e as Error).message);
     } finally { setBusy(false); }
@@ -138,7 +128,7 @@ export default function AiCenter({ computed, accounts, settings }: { computed: C
         <div className="card">
           <div className="row"><h2>1-yo'l · Rasmiy API orqali avtomatik tahlil</h2><span className="chip ok">ishlaydi</span></div>
           <p className="hint">Server (Vercel) provayderning rasmiy API'siga web-qidiruv bilan murojaat qiladi: bank stavkalari, kurs va uy narxlari internetdan tekshiriladi, har taklifga manba va sana qo'shiladi. Bu obuna emas — API hisobidan to'lanadi. Kalit shu brauzerda saqlanadi (bazaga yozilmaydi); ilova egasi kalitni Vercel env'ga qo'ysa, maydonni bo'sh qoldirish mumkin.</p>
-          <label className="label" htmlFor="aikey">{p.keyLabel} <a href={p.keyUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 400 }}>kalit olish ↗</a></label>
+          <label className="label" htmlFor="aikey">{p.keyLabel} <a href={p.keyUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 400 }}>kalit olish ↗</a> {key.trim() ? <span className="chip ok">ulangan — kalit shu brauzerda</span> : null}</label>
           <input id="aikey" type="password" value={key} onChange={(e) => saveKey(e.target.value)} placeholder="Bo'sh qoldirilsa — serverdagi kalit (agar sozlangan bo'lsa)" autoComplete="off" />
           <label className="label" htmlFor="q">Nimani tahlil qilsin?</label>
           <textarea id="q" rows={4} value={question} onChange={(e) => setQuestion(e.target.value)} />
@@ -146,6 +136,11 @@ export default function AiCenter({ computed, accounts, settings }: { computed: C
             <button type="button" className="primary" onClick={run} disabled={busy}>{busy ? "Tahlil qilinmoqda… (20–60 s)" : "Tahlil qilish"}</button>
             {!app.user && <small>Server kaliti uchun tizimga kirish kerak; o'z kalitingiz bilan mehmon rejimida ham ishlaydi.</small>}
           </div>
+          <label className="label" style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500, marginTop: 12 }}>
+            <input type="checkbox" checked={!!settings.autoAi} onChange={(e) => updateSettings({ autoAi: e.target.checked })} style={{ width: "auto" }} />
+            Avtomatik: ilova ochilganda kuniga bir marta o'zi tahlil qilib qo'ysin
+          </label>
+          <p className="hint" style={{ marginTop: 2 }}>Oxirgi tahlil 20 soatdan eski bo'lsa, fonda yangilanadi va tayyor bo'lganda xabar chiqadi. Har ishga tushishi API hisobidan to'lanadi.</p>
           {err && <div className="insight bad" style={{ gridTemplateColumns: "1fr" }}><div><b>Tahlil bajarilmadi</b><p>{err}</p></div></div>}
         </div>
 

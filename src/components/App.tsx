@@ -1,19 +1,22 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Account } from "@/lib/types";
-import { createNote, exportData, importData, initApp, migrateGuest, pruneEmptyNotes, setActiveNote, signOut, updateNote, useApp } from "@/lib/store";
+import { createNote, exportData, importData, initApp, migrateGuest, pruneEmptyNotes, setActiveNote, signOut, updateNote, updateSettings, useApp } from "@/lib/store";
 import { compute } from "@/lib/compute";
 import { humanDate, today } from "@/lib/dates";
 import { money, short } from "@/lib/format";
 import { flow, totals } from "@/lib/stats";
 import { buildInsights } from "@/lib/insights";
 import Composer from "./Composer";
+import Plans from "./Plans";
+import { runAiAnalysis, shouldAutoRun, savedKey } from "@/lib/ai";
+import { disableLock, enableLock, isLocked, lockEnabled, lockSupported, unlock } from "@/lib/lock";
 import History from "./History";
 import Stats from "./Stats";
 import Accounts, { AccountDialog } from "./Accounts";
 import AiCenter from "./AiCenter";
 import AuthDialog from "./Auth";
-import { Amount, Badge, ICONS, Modal, ToastProvider, TypeChip, useToast } from "./ui";
+import { Amount, Badge, ICONS, Modal, ToastProvider, TypeChip, entryTitle, useToast } from "./ui";
 
 type Tab = "editor" | "history" | "stats" | "accounts" | "ai";
 const TABS: [Tab, string][] = [["editor", "Yozuv"], ["history", "Tarix"], ["stats", "Tahlil"], ["accounts", "Hisoblar"], ["ai", "AI"]];
@@ -37,8 +40,13 @@ function Shell() {
   const fileRef = useRef<HTMLInputElement>(null);
   const todayStr = today();
 
+  const [locked, setLocked] = useState(() => typeof window !== "undefined" && isLocked());
+  const [lockErr, setLockErr] = useState("");
   useEffect(() => { void initApp(); }, []);
   useEffect(() => { const t = setInterval(pruneEmptyNotes, 60000); return () => clearInterval(t); }, []);
+  // Qulf ochilganda darhol biometrik so'rov
+  useEffect(() => { if (locked) { void unlock().then(() => setLocked(false)).catch(() => {}); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const computed = useMemo(() => compute(app.notes, app.accounts, app.settings, todayStr), [app.notes, app.accounts, app.settings, todayStr]);
   const note = useMemo(() => app.notes.find((n) => n.id === app.activeNoteId && !n.deleted) || null, [app.notes, app.activeNoteId]);
@@ -47,13 +55,39 @@ function Shell() {
   const fToday = flow(computed.ok, { from: todayStr, to: todayStr, label: "" }, "UZS", app.accounts);
   const insights = useMemo(() => buildInsights(computed, app.accounts, app.settings, todayStr), [computed, app.accounts, app.settings, todayStr]);
   const accByCode = useMemo(() => new Map(app.accounts.map((a) => [a.code, a])), [app.accounts]);
-  const pendingNotes = useMemo(() => {
-    const ids = new Set(computed.entries.filter((e) => e.status !== "ok").map((e) => e.noteId));
-    return app.notes.filter((n) => ids.has(n.id) && !n.deleted);
-  }, [computed, app.notes]);
+  const pendingEntries = useMemo(() => computed.entries.filter((e) => e.status !== "ok"), [computed]);
+
+  // Avtomatik kunlik AI tahlil: ochilganda, oxirgisi 20 soatdan eski bo'lsa, fonda yangilanadi
+  const autoRanRef = useRef(false);
+  useEffect(() => {
+    if (autoRanRef.current || !app.authReady || locked) return;
+    const st = app.settings;
+    if (computed.ok.length < 5) return;
+    if (!shouldAutoRun(st.autoAi, st.lastAi?.at, st.provider, !!app.user)) return;
+    autoRanRef.current = true;
+    import("@/lib/report").then(({ buildReport, AI_QUESTION_DEFAULT }) => {
+      const report = buildReport(computed, app.accounts, st, todayStr);
+      runAiAnalysis(st.provider, AI_QUESTION_DEFAULT, report, savedKey(st.provider))
+        .then((ai) => { updateSettings({ lastAi: ai }); toast("Kunlik AI tahlil tayyor — AI bo'limida", { label: "Ochish", fn: () => go("ai") }); })
+        .catch(() => { /* jim — qo'lda urinish mumkin */ });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.authReady, app.settings.autoAi, computed, locked]);
 
   function go(t: Tab) { setTab(t); window.scrollTo({ top: 0, behavior: "smooth" }); }
   function openEntry(noteId: string, line: number) { setActiveNote(noteId); setFocusLine(line); go("editor"); setTimeout(() => setFocusLine(null), 500); }
+  function insertLines(ls: string[]) {
+    const n = note && note.note_date === todayStr ? note : createNote(todayStr);
+    const base = n.raw.replace(/\s+$/, "");
+    const raw = (base ? base + "\n" : "") + ls.join("\n");
+    updateNote(n.id, { raw });
+    setActiveNote(n.id);
+    setFocusLine(raw.split("\n").length - 1);
+    go("editor");
+    setTimeout(() => setFocusLine(null), 500);
+    toast("Satr yozuvga qo'shildi — summa va hisobni tekshirib qo'ying");
+  }
+
   function writeBalance(code: string) {
     const n = note && note.note_date === todayStr ? note : createNote(todayStr);
     const base = n.raw.replace(/\s+$/, "");
@@ -84,6 +118,21 @@ function Shell() {
   }
 
   const recent = computed.entries.slice(-6).reverse();
+
+  if (locked) {
+    return (
+      <div className="shell" style={{ maxWidth: 420, paddingTop: 80, textAlign: "center" }}>
+        <div className="brand" style={{ justifyContent: "center", marginBottom: 18 }}><span className="mark"><span>m</span></span>Moliya</div>
+        <div className="card">
+          <h2>Biometrik qulf</h2>
+          <p className="hint" style={{ margin: "8px 0 14px" }}>Davom etish uchun qurilma biometriyasi (barmoq izi / yuz) bilan tasdiqlang.</p>
+          <button type="button" className="primary" style={{ width: "100%" }} onClick={() => { setLockErr(""); unlock().then(() => setLocked(false)).catch((e) => setLockErr((e as Error).message || "Tasdiqlanmadi — qayta urinib ko'ring")); }}>Ochish</button>
+          {lockErr && <p className="hint" style={{ color: "var(--out)", marginTop: 8 }}>{lockErr}</p>}
+          <button type="button" className="ghost small" style={{ marginTop: 12 }} onClick={() => { if (confirm("Biometrik qulf o'chirilsinmi? (Ma'lumotlar joyida qoladi; qulf faqat ilovani ochishni himoya qiladi)")) { disableLock(); setLocked(false); } }}>Qulfni o'chirish</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="shell">
@@ -129,7 +178,7 @@ function Shell() {
                 {recent.length === 0 ? <div className="empty"><b>Hali yozuv yo'q</b>Yuqorida bitta satr yozing — masalan, «N = 212» (hozirgi naqd pulingiz).</div> : recent.map((e) => (
                   <div key={e.key} className="entry" onClick={() => openEntry(e.noteId, e.line)}>
                     <Badge acc={e.account ? accByCode.get(e.account) : undefined} code={e.unknownCode || e.account} />
-                    <div className="main"><b>{e.status === "ok" ? (e.type === "transfer" || e.type === "debt" ? `${e.account} → ${e.counterparty}` : e.type === "snapshot" ? "Qoldiq " + e.account : e.category || "toifasiz") : e.raw}</b><small><TypeChip e={e} /> {humanDate(e.date, false)}{e.comment ? " · " + e.comment : ""}{e.status !== "ok" ? " · " + e.reason : ""}</small></div>
+                    <div className="main"><b>{entryTitle(e)}</b><small><TypeChip e={e} /> {humanDate(e.date, false)}{e.status !== "ok" ? " · " + e.reason : ""}</small></div>
                     <div className="right"><Amount e={e} /></div>
                   </div>
                 ))}
@@ -146,16 +195,17 @@ function Shell() {
                 </div>
                 {t.known < t.all && <small style={{ color: "#aebcc9", display: "block", marginTop: 8 }}>Qoldig'i noma'lum hisoblar bor — «K = 1085» kabi yozing. Qarzlar va dollar qo'shilmagan.</small>}
               </div>
-              {pendingNotes.length > 0 && (
+              {pendingEntries.length > 0 && (
                 <div className="card">
-                  <div className="row"><h2>Chala yozuvlar</h2><span className="chip warn">{pendingNotes.length} ta</span></div>
-                  <p className="hint">Saqlangan, lekin hisobga qo'shilmagan satrlar bor. Bosib davom ettiring.</p>
-                  {pendingNotes.slice(0, 5).map((n) => {
-                    const first = computed.entries.find((e) => e.noteId === n.id && e.status !== "ok")!;
-                    return <div key={n.id} className="entry" onClick={() => openEntry(n.id, first.line)}><Badge acc={first.account ? accByCode.get(first.account) : undefined} code={first.unknownCode || first.account} /><div className="main"><b className="mono">{first.raw || "(bo'sh satr)"}</b><small>{humanDate(n.note_date, false)} · {first.reason}</small></div><TypeChip e={first} /></div>;
-                  })}
+                  <div className="row"><h2>Chala satrlar</h2><span className="chip warn">{pendingEntries.length} ta</span></div>
+                  <p className="hint">Saqlangan, lekin hisobga qo'shilmagan. Bosib davom ettiring — tahrir dublikat yaratmaydi.</p>
+                  {pendingEntries.slice(0, 8).map((e) => (
+                    <div key={e.key} className="entry" onClick={() => openEntry(e.noteId, e.line)}><Badge acc={e.account ? accByCode.get(e.account) : undefined} code={e.unknownCode || e.account} /><div className="main"><b className="mono">{e.raw.trim() || "(bo'sh satr)"}</b><small>{humanDate(e.date, false)} · {e.reason}</small></div><TypeChip e={e} /></div>
+                  ))}
+                  {pendingEntries.length > 8 && <button type="button" className="small" style={{ width: "100%", marginTop: 8 }} onClick={() => go("stats")}>Yana {pendingEntries.length - 8} ta — Tahlil → Tekshirish kerak</button>}
                 </div>
               )}
+              <Plans settings={app.settings} accounts={app.accounts} onInsert={insertLines} />
               <div className="card">
                 <div className="row"><h2>Nazorat</h2><button type="button" className="ghost small" onClick={() => go("stats")}>Batafsil →</button></div>
                 {insights.length === 0 ? <p className="hint">Bir necha kun yozuv to'plansa, bu yerda aniq xulosalar paydo bo'ladi.</p> : insights.slice(0, 3).map((i) => (
@@ -182,6 +232,9 @@ function Shell() {
           <dt>Vaqt</dt><dd>Asia/Tashkent · {humanDate(todayStr, true, true)}</dd>
         </dl>
         <div className="wrap" style={{ marginTop: 16 }}>
+          {lockSupported() && (lockEnabled()
+            ? <button type="button" onClick={() => { disableLock(); toast("Biometrik qulf o'chirildi"); setSettingsOpen(false); }}>🔓 Biometrik qulfni o'chirish</button>
+            : <button type="button" onClick={() => { enableLock().then(() => toast("Biometrik qulf yoqildi — keyingi ochilishda so'raladi")).catch((e) => toast((e as Error).message)); }}>🔒 Biometrik qulf yoqish</button>)}
           <button type="button" onClick={doExport}>↓ JSON eksport</button>
           <button type="button" onClick={() => fileRef.current?.click()}>↑ JSON import</button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void doImport(f); e.target.value = ""; }} />

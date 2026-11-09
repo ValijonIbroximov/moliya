@@ -6,7 +6,7 @@ import { indexAccounts, parseNote } from "@/lib/parser";
 import { compose, composeTail, decompose, lineAt, replaceLine, splitTailSimple, type LineParts } from "@/lib/lineedit";
 import { humanDate, shiftDate, today as todayFn, isValidDate } from "@/lib/dates";
 import { short, ledger } from "@/lib/format";
-import { Amount, Badge, Tile, TypeChip, useToast } from "./ui";
+import { Amount, Badge, Tile, TypeChip, entryTitle, useToast } from "./ui";
 
 interface Props {
   computed: Computed;
@@ -30,6 +30,8 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const isAccount = (code: string) => !!idx.byCode.get(code.replace(/[ʻ‘’`´ʼ]/g, "'").toLowerCase());
   const accByCode = useMemo(() => new Map(accounts.map((a) => [a.code, a])), [accounts]);
 
+  const noteUnitRef = useRef<1 | 1000>(note?.unit ?? 1000);
+  noteUnitRef.current = note?.unit ?? 1000;
   const { lines, index: curLine } = lineAt(raw, caret);
   const parts = decompose(lines[curLine] || "", isAccount);
   const tailSplit = splitTailSimple(parts.tail);
@@ -171,6 +173,21 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   }, [comValue, computed.comments]);
 
   const noteDate = note?.note_date || todayStr;
+  // Tez-tez takrorlanadigan xarajatlar (hisob+summa+toifa kamida 3 marta) — bir bosishda satr
+  const quickLines = useMemo(() => {
+    const m = new Map<string, { acc: string; amount: number; cat: string; cur: string; count: number }>();
+    for (const e of computed.ok) {
+      if (e.type !== "expense" || !e.category || e.pairedWith) continue;
+      const k = `${e.account}|${e.amount}|${e.category}|${e.currency}`;
+      const r = m.get(k) || { acc: e.account!, amount: e.amount!, cat: e.category, cur: e.currency!, count: 0 };
+      r.count++; m.set(k, r);
+    }
+    return [...m.values()].filter((r) => r.count >= 3).sort((a, b) => b.count - a.count).slice(0, 6).map((r) => {
+      const a = Math.abs(r.amount);
+      const v = r.cur === "UZS" ? (noteUnitRef.current === 1000 ? String(Math.round((a / 1000) * 1000) / 1000) : String(a) + " so'm") : String(a) + "$";
+      return { line: `${r.acc} -${v} ${r.cat}`, count: r.count };
+    });
+  }, [computed]);
   // Katta yozuvlarda (ko'p kunlik Keep matni) faqat kursor atrofidagi satrlar ko'rsatiladi — telefonda sekinlashmasin
   const WINDOW = 40;
   const nonEmpty = previewLines.filter((l) => l.status !== "empty");
@@ -188,7 +205,10 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   return (
     <div className="card" id="composer">
       <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
-        <h2>{note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv · " + humanDate(noteDate, false)) : "Tezkor yozuv"}</h2>
+        <h2 style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {note && note.raw.trim() ? (noteDate === todayStr ? "Bugungi yozuv" : "Yozuv · " + humanDate(noteDate, false)) : "Tezkor yozuv"}
+          {noteDate !== todayStr && <span className="chip warn" title="Operatsiyalar shu sanaga yoziladi; sana sarlavhasi bo'lgan satrlar bundan mustasno">eski sana</span>}
+        </h2>
         <SaveStatus />
       </div>
 
@@ -238,6 +258,19 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
       />
 
+      {quickLines.length > 0 && (
+        <div className="sugg" style={{ marginTop: 6 }} aria-label="Tez-tez ishlatiladigan">
+          <small style={{ alignSelf: "center" }}>Tez-tez:</small>
+          {quickLines.map((q) => (
+            <button key={q.line} type="button" title={`${q.count} marta ishlatilgan`} onClick={() => {
+              const cur = (lines[curLine] || "").trim();
+              if (!cur) { const r = replaceLine(raw || "", curLine, q.line); setRaw(r.text, r.caret, false); }
+              else { const base = (raw || "").replace(/\s+$/, ""); const nr = base + "\n" + q.line; setRaw(nr, nr.length, false); }
+            }}>{q.line} <span className="muted">×{q.count}</span></button>
+          ))}
+        </div>
+      )}
+
       <div className="fields" style={{ marginTop: 10 }}>
         <div>
           <label className="label" htmlFor="amt">Summa {unitValue ? "" : noteUnit === 1000 && (!curAcc || curAcc.currency === "UZS") ? "· ming so'm" : ""}</label>
@@ -283,7 +316,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
                 <div className="main">
                   <b>
                     {e.status === "ok" ? (
-                      <>{e.type === "transfer" || e.type === "debt" ? `${e.account} → ${e.counterparty || "?"}` : e.category || "toifasiz"}{e.comment ? <span className="muted" style={{ fontWeight: 400 }}> · {e.comment}</span> : null}</>
+                      entryTitle(e)
                     ) : (
                       <span className={e.status === "pending" ? "" : "danger"}>{e.reason}</span>
                     )}

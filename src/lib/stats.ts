@@ -66,7 +66,7 @@ export function flow(ok: Entry[], p: Period, cur: Currency, accounts: Account[])
   const am = new Map(accounts.map((a) => [a.code, a]));
   const f: Flow = { income: 0, expense: 0, net: 0, debtGiven: 0, debtReturned: 0, transfers: 0, diffPlus: 0, diffMinus: 0, count: 0, days: daysBetween(p.from, p.to) + 1 };
   for (const e of ok) {
-    if (e.currency !== cur || !inPeriod(e, p)) continue;
+    if (e.currency !== cur || !inPeriod(e, p) || e.type === "total") continue;
     if (e.diff) {
       if (e.diff > 0) f.diffPlus += e.diff; else f.diffMinus += -e.diff;
     }
@@ -161,7 +161,7 @@ export function monthlySeries(ok: Entry[], cur: Currency, todayStr: string, mont
 export function totals(c: Computed, accounts: Account[], cur: Currency) {
   let total = 0, home = 0, active = 0, known = 0, all = 0, unknownMove = 0;
   for (const a of accounts) {
-    if (a.archived || a.type === "person") continue;
+    if (a.archived || a.type === "person" || a.type === "report") continue;
     const b = c.balances[a.code]?.[cur];
     if (!b) continue;
     if (!b.known && b.value === 0) continue;

@@ -398,6 +398,11 @@ export async function initApp(): Promise<void> {
 
   const sb = getSupabase();
   if (!sb) { set({ authReady: true }); return; }
+  // "Ishonchli qurilma" belgilanmagan bo'lsa: brauzer yopilib qayta ochilganda sessiya tugatiladi
+  if (localStorage.getItem("moliya:ephemeral") === "1" && !sessionStorage.getItem("moliya:sess")) {
+    await sb.auth.signOut({ scope: "local" }).catch(() => {});
+  }
+  sessionStorage.setItem("moliya:sess", "1");
   const { data } = await sb.auth.getSession();
   applySession(data.session?.user ? { id: data.session.user.id, email: data.session.user.email } : null);
   set({ authReady: true });

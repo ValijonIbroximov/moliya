@@ -11,7 +11,7 @@ create table if not exists public.moliya_accounts (
   user_id uuid not null references auth.users(id) on delete cascade,
   code text not null,
   name text not null default '',
-  type text not null default 'cash' check (type in ('cash','card','home','person','other')),
+  type text not null default 'cash' check (type in ('cash','card','home','person','other','report')),
   currency text not null default 'UZS',
   aliases text[] not null default '{}',
   color text not null default '#e8ecef',
@@ -21,6 +21,10 @@ create table if not exists public.moliya_accounts (
   updated_at timestamptz not null default now()
 );
 create index if not exists moliya_accounts_user_idx on public.moliya_accounts(user_id, updated_at);
+
+-- Avvalroq o'rnatganlar uchun migratsiya (xatosiz qayta bajariladi):
+alter table public.moliya_accounts drop constraint if exists moliya_accounts_type_check;
+alter table public.moliya_accounts add constraint moliya_accounts_type_check check (type in ('cash','card','home','person','other','report'));
 
 -- ---------- Yozuvlar (xom matn — o'zgarmas manba) ----------
 create table if not exists public.moliya_notes (

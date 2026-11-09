@@ -107,17 +107,27 @@ supabase/schema.sql   jadvallar, RLS, realtime
 tests/parser.test.ts  spec misollari + Keep skrinshoti bo'yicha testlar
 ```
 
-## 7. Bepul plan limitlari (egress 5 GB/oy)
+## 7. Qulayliklar
+
+- **Kirish**: email eslab qolinadi (faqat parol so'raladi), parol saqlanmaydi; «Ishonchli qurilma» belgilansa sessiya saqlanadi va parol qayta so'ralmaydi; Sozlamalar ⚙ da **biometrik qulf** (WebAuthn — barmoq/yuz) yoqiladi.
+- **Jami tekshiruv**: `Jami = 20640` — barcha hisoblar (shaxs va qayd turidan tashqari) yig'indisi bilan solishtiriladi, pul harakati sifatida yozilmaydi.
+- **Ikki valyutali satr**: `J +100$ + 300` ikkita operatsiya (100 $ va 300 ming so'm) sifatida o'qiladi.
+- **Ko'p so'zli hisoblar**: `Mirzabek aka=450` — «Mirzabek aka» nomli hisob yaratib bog'lanadi; `Samarqand = 780` kabi safar hisobotlari uchun «Qayd» turi bor (jami pulga qo'shilmaydi).
+- **Rejalar va eslatmalar**: muddatli to'lovlar (kvartira — har oy 17-sanagacha, 500 $ + 384 ming; kurs bilan ≈ so'mda ko'rsatiladi) va bir martalik eslatmalar; «Yozish» tugmasi to'lov satrini yozuvga qo'yadi.
+- **Tez-tez chiplar**: kamida 3 marta takrorlangan xarajatlar (`K -2 samokat ×20`) bir bosishda yoziladi.
+- **Avtomatik AI**: yoqilsa, ilova ochilganda kuniga bir marta fonda tahlil yangilanadi.
+
+## 8. Bepul plan limitlari (egress 5 GB/oy)
 
 Moliya trafikni deyarli sarflamaydi: bitta yozuv ≈ 0,5 KB, sinxronizatsiya faqat o'zgargan qatorlarni (`updated_at > lastSync`) oladi, realtime xabarlari bir necha yuz bayt. Oyiga bir necha MB. Egress limiti boshqa loyihalar hisobidan oshsa, tashkilotdagi barcha loyihalar (shu jumladan Moliya) 402 oladi — shuning uchun og'ir loyihani Supabase **Usage → Egress** bo'limida topib yengillating.
 
-## 8. Ma'lumotlar xavfsizligi
+## 9. Ma'lumotlar xavfsizligi
 
 - Supabase RLS: har foydalanuvchi faqat `user_id = auth.uid()` qatorlarini o'qiydi/yozadi.
 - Xom matn faqat sizning bazangizda. AI'ga **xom matn yuborilmaydi** — faqat yig'ma raqamlar va toifa nomlari.
 - JSON eksport/import — zaxira va qurilmaga ko'chirish uchun (Sozlamalar ⚙).
 
-## 9. Tekshirilgan narsalar
+## 10. Tekshirilgan narsalar
 
 - 54 ta avtomatik test: spec'dagi barcha yozuv shakllari, Keep skrinshotidagi 3 kunlik matn (balanslar `N = 80`, `K = 855`, `Uy = 6200` — sizning raqamlaringizga mos; `N = 1948 noma'lum 2` dagi +2 tafovut topildi; `K -18 = 1069` da 10 ming va `N -12 = 80` da 2 ming arifmetik farq topildi), kech kiritilgan yozuv sanasi, USD/UZS ajratish, juftlashtirish, chala satrlar.
 - Brauzer testi (Playwright, mobil 390px va desktop): matn kiritish → tahlil, sahifa yangilangach matn tiklanishi, hisob/amal/summa/toifa tugmalari matnni to'g'ri yig'ishi, chala/noma'lum/noaniq holatlar va tezkor tuzatish, barcha bo'limlar ochilishi.
