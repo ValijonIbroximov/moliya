@@ -20,7 +20,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const toast = useToast();
   const ta = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
-  const [comDraft, setComDraft] = useState<string | null>(null);
   const todayStr = todayFn();
   const raw = note?.raw ?? "";
   const live = accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code));
@@ -127,11 +126,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
 
 
 
-  function setComment(v: string) {
-    setComDraft(v);
-    applyParts({ ...parts, account: parts.account || live[0]?.code || "", tail: composeTail(tailSplit.category, v) }, false);
-  }
-
   function setDate(d: string) {
     if (!isValidDate(d)) return;
     const n = ensureNote();
@@ -161,8 +155,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
     upsertAccount({ ...acc, aliases: [...new Set([...(acc.aliases || []), code])] });
     toast(`"${code}" endi ${acc.code} hisobiga tegishli`);
   }
-
-  const comValue = comDraft ?? tailSplit.comment;
 
   const noteDate = note?.note_date || todayStr;
   // Tez-tez takrorlanadigan xarajatlar (hisob+summa+toifa kamida 3 marta) — bir bosishda satr
@@ -247,7 +239,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         autoCorrect="off"
         aria-label="Aqlli matn"
         style={{ marginTop: 12 }}
-        onChange={(e) => { setComDraft(null); setRaw(e.target.value); setCaret(e.target.selectionStart); }}
+        onChange={(e) => { setRaw(e.target.value); setCaret(e.target.selectionStart); }}
         onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
         onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
         onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
@@ -265,10 +257,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
           ))}
         </div>
       )}
-
-      <label className="label" htmlFor="com">Izoh <span className="muted" style={{ fontWeight: 400 }}>· ixtiyoriy, vergul bilan toifadan keyin yoziladi</span></label>
-      <input id="com" autoComplete="off" placeholder="Kimga, nima uchun…" value={comValue} onChange={(e) => setComment(e.target.value)} onBlur={() => setComDraft(null)} />
-
 
       {/* Jonli tahlil */}
       <div className="ledger">
