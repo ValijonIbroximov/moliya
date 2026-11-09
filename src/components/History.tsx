@@ -14,7 +14,7 @@ interface Props {
 }
 
 const TYPES: [string, string][] = [["all", "Barcha turlar"], ["expense", "Chiqim"], ["income", "Kirim"], ["transfer", "O'tkazma"], ["debt", "Qarz"], ["snapshot", "Qoldiq"]];
-const STATES: [string, string][] = [["all", "Barcha holatlar"], ["ok", "Aniq"], ["pending", "Chala"], ["unknown_account", "Noma'lum hisob"], ["unclear", "Noaniq"], ["uncertain", "? belgili"], ["diff", "Tafovutli"]];
+const STATES: [string, string][] = [["all", "Barcha holatlar"], ["ok", "Aniq"], ["pending", "Chala"], ["unknown_account", "Noma'lum hisob"], ["unclear", "Noaniq"], ["uncertain", "? belgili"], ["diff", "Tafovutli"], ["nocat", "Toifasiz"]];
 
 export default function History({ computed, accounts, notes, onOpen }: Props) {
   const [q, setQ] = useState("");
@@ -36,7 +36,8 @@ export default function History({ computed, accounts, notes, onOpen }: Props) {
       if (state !== "all") {
         if (state === "uncertain" && !e.uncertain) continue;
         else if (state === "diff" && !e.diff) continue;
-        else if (!["uncertain", "diff"].includes(state) && e.status !== state) continue;
+        else if (state === "nocat" && !(e.status === "ok" && (e.type === "income" || e.type === "expense") && !e.category)) continue;
+        else if (!["uncertain", "diff", "nocat"].includes(state) && e.status !== state) continue;
       }
       if (ql && ![e.raw, e.category, e.comment, e.reason].join(" ").toLowerCase().includes(ql)) continue;
       out.push(e);
