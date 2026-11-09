@@ -66,8 +66,8 @@ export default function History({ computed, accounts, notes, onOpen }: Props) {
         <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tur" style={{ width: "auto" }}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select value={state} onChange={(e) => setState(e.target.value)} aria-label="Holat" style={{ width: "auto" }}>{STATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </div>
-      <div className="tiles" style={{ marginTop: 10 }}>
-        {accounts.filter((a) => !a.archived).map((a) => <Tile key={a.id} acc={a} small on={acc === a.code} onClick={() => setAcc(acc === a.code ? "" : a.code)} />)}
+      <div className="tiles row1" style={{ marginTop: 10 }}>
+        {accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => <Tile key={a.id} acc={a} small on={acc === a.code} onClick={() => setAcc(acc === a.code ? "" : a.code)} />)}
       </div>
       <p className="hint">{rows.length} ta satr{acc ? ` · ${acc}` : ""}. Satrga bosib tahrirlang — dublikat yaratilmaydi.</p>
 
