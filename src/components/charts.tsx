@@ -8,7 +8,7 @@ export const CAT_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"
 export interface BarGroup { label: string; title?: string; a: number; b: number }
 
 /** Ikki qatorli ustunlar (kirim/chiqim). Bir o'q, ingichka belgilar, hover tooltip. */
-export function GroupedBars({ data, cur = "UZS", aLabel = "Kirim", bLabel = "Chiqim", height = 190 }: { data: BarGroup[]; cur?: Currency; aLabel?: string; bLabel?: string; height?: number }) {
+export function GroupedBars({ data, cur = "UZS", aLabel = "Kirim", bLabel = "Chiqim", height = 190, mode = "bar" }: { data: BarGroup[]; cur?: Currency; aLabel?: string; bLabel?: string; height?: number; mode?: "bar" | "line" }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 640, H = height, padL = 8, padR = 8, padT = 26, padB = 26;
   const max = Math.max(1, ...data.flatMap((d) => [d.a, d.b]));
@@ -34,12 +34,32 @@ export function GroupedBars({ data, cur = "UZS", aLabel = "Kirim", bLabel = "Chi
           return (
             <g key={i} onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} onClick={() => setHover(on ? null : i)} style={{ cursor: "pointer" }}>
               <rect x={padL + slot * i} y={padT} width={slot} height={plotH + padB} fill={on ? "var(--surface-2)" : "transparent"} />
-              <rect x={cx - bw - 1} y={y(d.a)} width={bw} height={Math.max(0, y(0) - y(d.a))} fill="#1f7a5c" rx={3} opacity={hover === null || on ? 1 : .55} />
-              <rect x={cx + 1} y={y(d.b)} width={bw} height={Math.max(0, y(0) - y(d.b))} fill="#b8432f" rx={3} opacity={hover === null || on ? 1 : .55} />
+              {mode === "bar" && <>
+                <rect x={cx - bw - 1} y={y(d.a)} width={bw} height={Math.max(0, y(0) - y(d.a))} fill="#1f7a5c" rx={3} opacity={hover === null || on ? 1 : .55} />
+                <rect x={cx + 1} y={y(d.b)} width={bw} height={Math.max(0, y(0) - y(d.b))} fill="#b8432f" rx={3} opacity={hover === null || on ? 1 : .55} />
+              </>}
               <text x={cx} y={H - 8} fontSize={10.5} fill="var(--ink-2)" textAnchor="middle">{d.label}</text>
             </g>
           );
         })}
+        {mode === "line" && (() => {
+          const cx = (i: number) => padL + slot * i + slot / 2;
+          const ptsA = data.map((d, i) => `${cx(i).toFixed(1)},${y(d.a).toFixed(1)}`).join(" ");
+          const ptsB = data.map((d, i) => `${cx(i).toFixed(1)},${y(d.b).toFixed(1)}`).join(" ");
+          return (
+            <g pointerEvents="none">
+              <polygon points={`${cx(0).toFixed(1)},${y(0)} ${ptsB} ${cx(data.length - 1).toFixed(1)},${y(0)}`} fill="#b8432f" opacity={0.07} />
+              <polyline points={ptsA} fill="none" stroke="#1f7a5c" strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={ptsB} fill="none" stroke="#b8432f" strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
+              {data.map((d, i) => (
+                <g key={i}>
+                  <circle cx={cx(i)} cy={y(d.a)} r={hover === i ? 4.2 : 2.6} fill="#1f7a5c" />
+                  <circle cx={cx(i)} cy={y(d.b)} r={hover === i ? 4.2 : 2.6} fill="#b8432f" />
+                </g>
+              ))}
+            </g>
+          );
+        })()}
         <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="var(--line-2)" strokeWidth={1} />
       </svg>
       <div className="wrap" style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, gap: 14 }}>

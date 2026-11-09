@@ -22,6 +22,8 @@ interface Props {
 export default function Stats({ computed, accounts, settings, onOpen, onGo, onAddAccount }: Props) {
   const [periodKind, setPeriodKind] = useState("30");
   const [cur, setCur] = useState<Currency>("UZS");
+  const [chartMode, setChartMode] = useState<"bar" | "line">(() => { try { return localStorage.getItem("moliya:chartmode") === "line" ? "line" : "bar"; } catch { return "bar"; } });
+  function pickMode(m: "bar" | "line") { setChartMode(m); try { localStorage.setItem("moliya:chartmode", m); } catch { /* bo'sh */ } }
   const toast = useToast();
   const todayStr = today();
   const period = periodFor(periodKind, todayStr);
@@ -83,9 +85,19 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
 
       <div className="grid">
         <div className="card" id="flowchart">
-          <div className="row"><h2>Kirim va chiqim</h2><span className="chip">{cur}</span></div>
-          <p className="hint" style={{ marginBottom: 8 }}>{buckets.length} oraliq · ustunga bosing</p>
-          {f.income + f.expense > 0 ? <GroupedBars data={buckets.map((b) => ({ label: b.label, title: `${humanDate(b.from, false)} — ${humanDate(b.to, false)}`, a: b.income, b: b.expense }))} cur={cur} /> : <div className="empty"><b>Bu davrda yozuv yo'q</b>Kirim yoki chiqim yozilsa grafik paydo bo'ladi.</div>}
+          <div className="row"><h2>Kirim va chiqim</h2><span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+            <span className="segment" role="group" aria-label="Grafik turi" style={{ padding: 2 }}>
+              <button type="button" className={chartMode === "bar" ? "on" : ""} style={{ padding: "3px 8px", minHeight: 0 }} onClick={() => pickMode("bar")} title="Ustunli">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="4" y="11" width="4" height="9" rx="1"/><rect x="10" y="5" width="4" height="15" rx="1"/><rect x="16" y="8" width="4" height="12" rx="1"/></svg>
+              </button>
+              <button type="button" className={chartMode === "line" ? "on" : ""} style={{ padding: "3px 8px", minHeight: 0 }} onClick={() => pickMode("line")} title="Siniq chiziqli">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l5-6 4 3 6-8"/></svg>
+              </button>
+            </span>
+            <span className="chip">{cur}</span>
+          </span></div>
+          <p className="hint" style={{ marginBottom: 8 }}>{buckets.length} oraliq · bosib ko'ring</p>
+          {f.income + f.expense > 0 ? <GroupedBars data={buckets.map((b) => ({ label: b.label, title: `${humanDate(b.from, false)} — ${humanDate(b.to, false)}`, a: b.income, b: b.expense }))} cur={cur} mode={chartMode} /> : <div className="empty"><b>Bu davrda yozuv yo'q</b>Kirim yoki chiqim yozilsa grafik paydo bo'ladi.</div>}
         </div>
         <div className="card">
           <h2>Xarajat tarkibi</h2>
@@ -98,7 +110,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
         <div className="card">
           <div className="row"><h2>Oylar kesimida</h2><span className="chip">6 oy · {cur}</span></div>
           <p className="hint" style={{ marginBottom: 8 }}>Har oy jami kirim va chiqim</p>
-          <GroupedBars data={months.map((m) => ({ label: monthShortUz(m.ym), title: monthNameUz(m.ym), a: m.income, b: m.expense }))} cur={cur} height={170} />
+          <GroupedBars data={months.map((m) => ({ label: monthShortUz(m.ym), title: monthNameUz(m.ym), a: m.income, b: m.expense }))} cur={cur} height={170} mode={chartMode} />
           <div className="tablewrap"><table className="table" style={{ marginTop: 8 }}>
             <thead><tr><th>Oy</th><th className="r">Kirim</th><th className="r">Chiqim</th><th className="r">Sof</th></tr></thead>
             <tbody>{months.map((m) => <tr key={m.ym}><td>{monthNameUz(m.ym)}</td><td className="r amt in">{m.income ? "+" + short(m.income, cur) : "—"}</td><td className="r amt out">{m.expense ? "−" + short(m.expense, cur) : "—"}</td><td className={`r amt ${m.net >= 0 ? "in" : "out"}`}>{m.income || m.expense ? signed(m.net, cur) : "—"}</td></tr>)}</tbody>
