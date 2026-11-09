@@ -71,9 +71,16 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
     }
   }
 
-  /** Tugma/maydondan satrni qayta yig'ish. focus=false — yordamchi maydonlardan yozilganda fokus saqlanadi */
+  /** Tugma/maydondan satrni qayta yig'ish. focus=false — yordamchi maydonlardan yozilganda fokus saqlanadi.
+      Maxsus satr (Jami, sana sarlavhasi) ustida bo'lsa — buzmasdan yangi satr ochiladi. */
   function applyParts(p: LineParts, focus = true) {
     const line = compose(p);
+    if (parts.special && (lines[curLine] || "").trim()) {
+      const base = (raw || "").replace(/\s+$/, "");
+      const nr = base + "\n" + line;
+      setRaw(nr, nr.length, focus);
+      return;
+    }
     const r = replaceLine(raw || "", curLine, line);
     setRaw(r.text, r.caret, focus);
   }

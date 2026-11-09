@@ -117,14 +117,13 @@ tests/parser.test.ts  spec misollari + Keep skrinshoti bo'yicha testlar
 - **Tez-tez chiplar**: kamida 3 marta takrorlangan xarajatlar (`K -2 samokat ×20`) bir bosishda yoziladi.
 - **Avtomatik AI**: yoqilsa, ilova ochilganda kuniga bir marta fonda tahlil yangilanadi.
 
-### Parolni tiklash (Telegram orqali)
+### Parolni tiklash (AccessPassword bilan)
 
-Kod SMS emas — Telegram'dagi rasmiy **Verification Codes** akkauntidan keladi (Telegram Gateway). Sozlash:
-1. [gateway.telegram.org](https://gateway.telegram.org) ga Telegram akkauntingiz bilan kiring → API token oling.
-2. Vercel env: `TELEGRAM_GATEWAY_TOKEN`, `RESET_PHONE` (+998...), `SUPABASE_SECRET_KEY` (Supabase → API Keys → Secret key), `ALLOWED_EMAILS`.
-3. Kirish oynasida «Parolni unutdingizmi?» → kod Telegram'ga keladi → yangi parol.
+«Parolni unutdingizmi?» bosilganda **AccessPassword** (Vercel env'dagi `ACCESS_PASSWORD` qiymati) va yangi parol so'raladi. AccessPassword to'g'ri bo'lsa parol yangilanadi; akkaunt hali yaratilmagan bo'lsa — shu yerning o'zida yaratiladi. Kerakli env: `ACCESS_PASSWORD`, `SUPABASE_SECRET_KEY` (Supabase → API Keys → Secret key), ixtiyoriy `NEXT_PUBLIC_OWNER_EMAIL`. AccessPassword'ni kodga yozmang — GitHub'da ko'rinadi; env'da xavfsiz turadi. Noto'g'ri urinishlar sekinlashtiriladi (5 tadan keyin 1 daqiqa).
 
-Xavfsizlik: tiklash faqat `ALLOWED_EMAILS` dagi emaillar uchun; kod har doim `RESET_PHONE` dagi raqamga boradi (boshqa birov so'rasa ham kod sizga keladi); o'z raqamingizga kod Telegram tomonidan bepul; `SUPABASE_SECRET_KEY` faqat serverda turadi va brauzerga chiqmaydi.
+### Kunduzgi / tungi rejim
+
+Yuqori paneldagi oy/quyosh tugmasi — tez almashtirish; Sozlamalar ⚙ da «Avto (tizim) / Kunduzgi / Tungi» tanlovi. Tanlov qurilmada eslab qolinadi, «Avto» tizim mavzusiga ergashadi.
 
 ## 8. Bepul plan limitlari (egress 5 GB/oy)
 

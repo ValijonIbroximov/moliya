@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn, signInGoogle, signUp } from "@/lib/store";
+import { OWNER_EMAIL } from "@/lib/config";
 import { Modal, useToast } from "./ui";
 
 /**
@@ -55,32 +56,23 @@ type Mode = "in" | "up" | "reset";
 export default function AuthDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const [mode, setMode] = useState<Mode>("in");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(OWNER_EMAIL);
+  const [editEmail, setEditEmail] = useState(false);
   const [pass, setPass] = useState("");
   const [trusted, setTrusted] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  // reset holati
-  const [requestId, setRequestId] = useState("");
-  const [phoneHint, setPhoneHint] = useState("");
-  const [code, setCode] = useState("");
+  const [access, setAccess] = useState("");
   const [newPass, setNewPass] = useState("");
-  const [cooldown, setCooldown] = useState(0);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const google = process.env.NEXT_PUBLIC_ENABLE_GOOGLE === "1";
-  const remembered = typeof window !== "undefined" ? localStorage.getItem("moliya:lastEmail") || "" : "";
 
   useEffect(() => {
-    if (open) { setMode("in"); setEmail(remembered); setPass(""); setErr(""); setRequestId(""); setCode(""); setNewPass(""); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (open) {
+      const remembered = localStorage.getItem("moliya:lastEmail");
+      setMode("in"); setEmail(remembered || OWNER_EMAIL); setEditEmail(false);
+      setPass(""); setErr(""); setAccess(""); setNewPass("");
+    }
   }, [open]);
-  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
-
-  function startCooldown(s: number) {
-    setCooldown(s);
-    if (timer.current) clearInterval(timer.current);
-    timer.current = setInterval(() => setCooldown((x) => { if (x <= 1 && timer.current) clearInterval(timer.current); return Math.max(0, x - 1); }), 1000);
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,67 +89,55 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
       }
     } catch (ex) {
       const m = (ex as Error).message || "";
-      setErr(m.includes("Invalid login") ? "Email yoki parol noto'g'ri" : m.includes("already registered") ? "Bu email allaqachon ro'yxatdan o'tgan — kiring" : m.includes("Password should") ? "Parol kamida 6 belgi" : m || "Xato");
+      setErr(m.includes("Invalid login") ? "Parol noto'g'ri (yoki akkaunt hali yaratilmagan — «Parolni unutdingizmi?» orqali ham ochish mumkin)" : m.includes("already registered") ? "Bu email allaqachon ro'yxatdan o'tgan — kiring" : m.includes("Password should") ? "Parol kamida 6 belgi" : m || "Xato");
     } finally { setBusy(false); }
   }
 
-  async function sendCode() {
-    setBusy(true); setErr("");
-    try {
-      const r = await fetch("/api/reset", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "send", email: email.trim() }) });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error);
-      setRequestId(j.request_id);
-      setPhoneHint(j.phone_hint || "");
-      startCooldown(60);
-      toast("Kod yuborildi — Telegram'da «Verification Codes» xabarini oching");
-    } catch (ex) { setErr((ex as Error).message); } finally { setBusy(false); }
-  }
-
-  async function verifyReset(e: React.FormEvent) {
+  async function doReset(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const r = await fetch("/api/reset", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "verify", email: email.trim(), request_id: requestId, code: code.trim(), newPassword: newPass }) });
+      const r = await fetch("/api/reset", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: email.trim(), accessPassword: access, newPassword: newPass }) });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error);
-      toast("Parol yangilandi — endi kiring");
-      setMode("in"); setPass(""); setRequestId(""); setCode(""); setNewPass("");
+      toast(j.created ? "Akkaunt yaratildi — yangi parol bilan kiring" : "Parol yangilandi — endi kiring");
+      setMode("in"); setPass(""); setAccess(""); setNewPass("");
     } catch (ex) { setErr((ex as Error).message); } finally { setBusy(false); }
   }
 
+  const emailBlock = editEmail ? (
+    <>
+      <label className="label" htmlFor="em">Email</label>
+      <input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="off" inputMode="email" />
+    </>
+  ) : (
+    <div className="row" style={{ marginTop: 4 }}>
+      <span style={{ fontSize: 14 }}><b>{email}</b></span>
+      <button type="button" className="ghost small" onClick={() => setEditEmail(true)}>Boshqa email</button>
+    </div>
+  );
+
   return (
     <Modal open={open} onClose={onClose} title={mode === "in" ? "Kirish" : mode === "up" ? "Ro'yxatdan o'tish" : "Parolni tiklash"}>
-      {mode !== "reset" && <p className="hint" style={{ marginTop: -6 }}>Kirgandan keyin yozuvlar bulutda (Supabase) saqlanadi va telefon–kompyuter o'rtasida sinxronlanadi. Kirmasangiz ham ilova ishlaydi — faqat shu qurilmada.</p>}
-
       {mode !== "reset" ? (
         <>
+          <p className="hint" style={{ marginTop: -6 }}>Kirgandan keyin yozuvlar bulutda (Supabase) saqlanadi va telefon–kompyuter o'rtasida sinxronlanadi.</p>
           <form onSubmit={submit} autoComplete="off">
-            {remembered && mode === "in" && email === remembered ? (
-              <div className="row" style={{ marginTop: 4 }}>
-                <span style={{ fontSize: 14 }}><b>{remembered}</b></span>
-                <button type="button" className="ghost small" onClick={() => { setEmail(""); localStorage.removeItem("moliya:lastEmail"); }}>Boshqa akkaunt</button>
-              </div>
-            ) : (
-              <>
-                <label className="label" htmlFor="em">Email</label>
-                <input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="off" inputMode="email" />
-              </>
-            )}
+            {emailBlock}
             <label className="label" htmlFor="pw">Parol</label>
-            <PwInput id="pw" value={pass} onChange={setPass} minLength={6} autoFocus={!!remembered} />
+            <PwInput id="pw" value={pass} onChange={setPass} minLength={6} autoFocus />
             <label className="label" style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
               <input type="checkbox" checked={trusted} onChange={(e) => setTrusted(e.target.checked)} style={{ width: "auto" }} />
               Ishonchli qurilma — keyingi safar parol so'ralmasin
             </label>
-            <p className="hint" style={{ marginTop: 2 }}>Parol saqlanmaydi — faqat sessiya belgisi qoladi. Belgilamasangiz, brauzer yopilganda sessiya tugaydi. Qo'shimcha himoya uchun Sozlamalar ⚙ da biometrik qulfni yoqing.</p>
+            <p className="hint" style={{ marginTop: 2 }}>Parol saqlanmaydi — faqat sessiya belgisi qoladi. Qo'shimcha himoya: Sozlamalar ⚙ → biometrik qulf.</p>
             {err && <p className="hint" style={{ color: "var(--out)" }}>{err}</p>}
             <button className="primary" style={{ width: "100%", marginTop: 14 }} disabled={busy}>{busy ? "…" : mode === "in" ? "Kirish" : "Akkaunt yaratish"}</button>
           </form>
           {google && <button type="button" style={{ width: "100%", marginTop: 8 }} onClick={() => signInGoogle().catch((e) => setErr(e.message))}>Google orqali kirish</button>}
           <p className="hint" style={{ textAlign: "center", marginTop: 12 }}>
             {mode === "in" ? (
-              <>Akkaunt yo'qmi? <a href="#" onClick={(e) => { e.preventDefault(); setMode("up"); setErr(""); }}>Ro'yxatdan o'ting</a> · <a href="#" onClick={(e) => { e.preventDefault(); setMode("reset"); setErr(""); }}>Parolni unutdingizmi?</a></>
+              <><a href="#" onClick={(e) => { e.preventDefault(); setMode("reset"); setErr(""); }}>Parolni unutdingizmi?</a> · <a href="#" onClick={(e) => { e.preventDefault(); setMode("up"); setErr(""); }}>Ro'yxatdan o'tish</a></>
             ) : (
               <>Akkaunt bormi? <a href="#" onClick={(e) => { e.preventDefault(); setMode("in"); setErr(""); }}>Kiring</a></>
             )}
@@ -165,23 +145,15 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
         </>
       ) : (
         <>
-          <p className="hint" style={{ marginTop: -6 }}>Tasdiqlash kodi Telegram'dagi rasmiy <b>Verification Codes</b> akkauntidan {phoneHint ? <b>{phoneHint}</b> : "ro'yxatdagi raqamingizga"} keladi. SMS emas — Telegram xabari.</p>
-          <label className="label" htmlFor="rem">Email</label>
-          <input id="rem" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="off" inputMode="email" />
-          <div className="wrap" style={{ marginTop: 10 }}>
-            <button type="button" onClick={sendCode} disabled={busy || cooldown > 0 || !email.includes("@")}>{cooldown > 0 ? `Qayta yuborish · ${cooldown} s` : requestId ? "Kodni qayta yuborish" : "Telegram'ga kod yuborish"}</button>
-          </div>
-          {requestId && (
-            <form onSubmit={verifyReset} autoComplete="off" style={{ marginTop: 6 }}>
-              <label className="label" htmlFor="code">Telegram'dan kelgan kod</label>
-              <input id="code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} inputMode="numeric" autoComplete="one-time-code" placeholder="6 xonali kod" maxLength={8} required style={{ letterSpacing: 4, fontSize: 18, fontWeight: 700 }} />
-              <label className="label" htmlFor="npw">Yangi parol</label>
-              <PwInput id="npw" value={newPass} onChange={setNewPass} minLength={6} placeholder="Kamida 6 belgi" />
-              {err && <p className="hint" style={{ color: "var(--out)" }}>{err}</p>}
-              <button className="primary" style={{ width: "100%", marginTop: 14 }} disabled={busy}>{busy ? "…" : "Parolni yangilash"}</button>
-            </form>
-          )}
-          {!requestId && err && <p className="hint" style={{ color: "var(--out)" }}>{err}</p>}
+          <p className="hint" style={{ marginTop: -6 }}><b>{email}</b> uchun yangi parol o'rnatiladi. Buning uchun <b>AccessPassword</b> — Vercel'dagi <code>ACCESS_PASSWORD</code> qiymati kerak. Akkaunt hali yaratilmagan bo'lsa, shu yerning o'zida yaratiladi.</p>
+          <form onSubmit={doReset} autoComplete="off">
+            <label className="label" htmlFor="acc">AccessPassword</label>
+            <PwInput id="acc" value={access} onChange={setAccess} autoFocus />
+            <label className="label" htmlFor="npw">Yangi parol</label>
+            <PwInput id="npw" value={newPass} onChange={setNewPass} minLength={6} placeholder="Kamida 6 belgi" />
+            {err && <p className="hint" style={{ color: "var(--out)" }}>{err}</p>}
+            <button className="primary" style={{ width: "100%", marginTop: 14 }} disabled={busy}>{busy ? "…" : "Parolni o'rnatish"}</button>
+          </form>
           <p className="hint" style={{ textAlign: "center", marginTop: 12 }}><a href="#" onClick={(e) => { e.preventDefault(); setMode("in"); setErr(""); }}>← Kirishga qaytish</a></p>
         </>
       )}

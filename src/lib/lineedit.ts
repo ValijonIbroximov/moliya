@@ -4,6 +4,7 @@
 import { normApos } from "./parser";
 
 export interface LineParts {
+  special?: boolean; // Jami / sana sarlavhasi — tugmalar yangi satrga yozsin
   account: string; // kod yoki ""
   op: "-" | "+" | "=" | "->" | "";
   target: string; // o'tkazma uchun
@@ -23,6 +24,10 @@ const RE = new RegExp(
 
 export function decompose(line: string, isAccount: (code: string) => boolean): LineParts {
   const t = normApos(line);
+  // Maxsus satrlar: "Jami = ..." va sana sarlavhalari — yordamchi maydonlarga chiqarilmaydi
+  if (/^\s*(?:jami|total)\b/i.test(t) || /^\s*\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?\s*(?:\p{L}+\s*)?$/u.test(t) || /^\s*\d{4}-\d{1,2}-\d{1,2}\s*$/.test(t)) {
+    return { account: "", op: "", target: "", amount: "", unit: "", expected: "", tail: "", special: true };
+  }
   const m = t.match(RE);
   const empty: LineParts = { account: "", op: "", target: "", amount: "", unit: "", expected: "", tail: t.trim() };
   if (!m) return empty;

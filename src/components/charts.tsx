@@ -24,8 +24,8 @@ export function GroupedBars({ data, cur = "UZS", aLabel = "Kirim", bLabel = "Chi
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label={data.map((d) => `${d.label}: ${aLabel} ${money(d.a, cur)}, ${bLabel} ${money(d.b, cur)}`).join("; ")} style={{ display: "block", overflow: "visible" }} onMouseLeave={() => setHover(null)}>
         {ticks.map((t, i) => (
           <g key={i}>
-            <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="#e4e9ee" strokeWidth={1} />
-            <text x={W - padR} y={y(t) - 4} fontSize={10} fill="#8a95a0" textAnchor="end">{i === 0 ? "" : short(t, cur)}</text>
+            <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeWidth={1} />
+            <text x={W - padR} y={y(t) - 4} fontSize={10} fill="var(--muted)" textAnchor="end">{i === 0 ? "" : short(t, cur)}</text>
           </g>
         ))}
         {data.map((d, i) => {
@@ -33,14 +33,14 @@ export function GroupedBars({ data, cur = "UZS", aLabel = "Kirim", bLabel = "Chi
           const on = hover === i;
           return (
             <g key={i} onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} onClick={() => setHover(on ? null : i)} style={{ cursor: "pointer" }}>
-              <rect x={padL + slot * i} y={padT} width={slot} height={plotH + padB} fill={on ? "#f3f6f9" : "transparent"} />
+              <rect x={padL + slot * i} y={padT} width={slot} height={plotH + padB} fill={on ? "var(--surface-2)" : "transparent"} />
               <rect x={cx - bw - 1} y={y(d.a)} width={bw} height={Math.max(0, y(0) - y(d.a))} fill="#1f7a5c" rx={3} opacity={hover === null || on ? 1 : .55} />
               <rect x={cx + 1} y={y(d.b)} width={bw} height={Math.max(0, y(0) - y(d.b))} fill="#b8432f" rx={3} opacity={hover === null || on ? 1 : .55} />
-              <text x={cx} y={H - 8} fontSize={10.5} fill="#5d6873" textAnchor="middle">{d.label}</text>
+              <text x={cx} y={H - 8} fontSize={10.5} fill="var(--ink-2)" textAnchor="middle">{d.label}</text>
             </g>
           );
         })}
-        <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="#c9d2da" strokeWidth={1} />
+        <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="var(--line-2)" strokeWidth={1} />
       </svg>
       <div className="wrap" style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, gap: 14 }}>
         <span><i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 3, background: "#1f7a5c", marginRight: 5 }} />{aLabel}</span>
@@ -62,7 +62,7 @@ export function Donut({ rows, total, cur = "UZS" }: { rows: { category: string; 
     <div>
       <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
         <div style={{ width: 128, height: 128, borderRadius: "50%", background: `conic-gradient(${stops.join(",")})`, display: "grid", placeItems: "center", flexShrink: 0 }} role="img" aria-label={segs.map((s) => `${s.label} ${money(s.v, cur)}`).join(", ")}>
-          <div style={{ width: 86, height: 86, borderRadius: "50%", background: "#fff", display: "grid", placeContent: "center", textAlign: "center" }}>
+          <div style={{ width: 86, height: 86, borderRadius: "50%", background: "var(--surface)", display: "grid", placeContent: "center", textAlign: "center" }}>
             <small style={{ fontSize: 10 }}>jami chiqim</small>
             <b style={{ fontSize: 14 }}>{short(total, cur)}</b>
           </div>

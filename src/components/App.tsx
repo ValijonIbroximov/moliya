@@ -11,6 +11,7 @@ import Composer from "./Composer";
 import Plans from "./Plans";
 import { runAiAnalysis, shouldAutoRun, savedKey } from "@/lib/ai";
 import { disableLock, enableLock, isLocked, lockEnabled, lockSupported, unlock } from "@/lib/lock";
+import { applyTheme, getTheme, resolved, watchSystemTheme, type Theme } from "@/lib/theme";
 import History from "./History";
 import Stats from "./Stats";
 import Accounts, { AccountDialog } from "./Accounts";
@@ -41,6 +42,9 @@ function Shell() {
   const todayStr = today();
 
   const [locked, setLocked] = useState(() => typeof window !== "undefined" && isLocked());
+  const [theme, setTheme] = useState<Theme>(() => (typeof window !== "undefined" ? getTheme() : "auto"));
+  useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => watchSystemTheme(), []);
   const [lockErr, setLockErr] = useState("");
   useEffect(() => { void initApp(); }, []);
   useEffect(() => { const t = setInterval(pruneEmptyNotes, 60000); return () => clearInterval(t); }, []);
@@ -143,6 +147,13 @@ function Shell() {
             app.user ? <button type="button" className="small" onClick={() => setSettingsOpen(true)} title={app.user.email}>{(app.user.email || "akkaunt").split("@")[0]}</button>
               : app.authReady ? <button type="button" className="small primary" onClick={() => setAuthOpen(true)}>Kirish</button> : null
           ) : <span className="chip warn" title="NEXT_PUBLIC_SUPABASE_URL sozlanmagan">faqat qurilma</span>}
+          <button type="button" className="small" onClick={() => setTheme(resolved(theme) === "dark" ? "light" : "dark")} aria-label="Kunduzgi/tungi rejim" title="Kunduzgi/tungi rejim">
+            {resolved(theme) === "dark" ? (
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M19.2 4.8l-1.8 1.8M6.6 17.4l-1.8 1.8"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>
+            )}
+          </button>
           <button type="button" className="small" onClick={() => setSettingsOpen(true)} aria-label="Sozlamalar">⚙</button>
         </div>
       </header>
@@ -185,7 +196,7 @@ function Shell() {
               </div>
             </div>
             <aside className="stack">
-              <div className="card" style={{ background: "linear-gradient(160deg,#16212b,#2a3d4f)", color: "#fff", borderColor: "transparent" }}>
+              <div className="card" style={{ background: "linear-gradient(160deg,var(--hero-a),var(--hero-b))", color: "#fff", borderColor: "transparent" }}>
                 <small style={{ color: "#aebcc9" }}>Tasdiqlangan pul · {t.known}/{t.all} hisob</small>
                 <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -1, marginTop: 4 }}>{t.known ? money(t.total) : "—"}</div>
                 <div className="row" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #3b4e60" }}>
@@ -231,6 +242,12 @@ function Shell() {
           <dt>Yozuvlar</dt><dd>{app.notes.filter((n) => !n.deleted).length} ta yozuv · {computed.ok.length} ta aniq satr · {app.accounts.length} ta hisob</dd>
           <dt>Vaqt</dt><dd>Asia/Tashkent · {humanDate(todayStr, true, true)}</dd>
         </dl>
+        <label className="label">Ko'rinish</label>
+        <div className="segment" role="group" aria-label="Mavzu">
+          {([["auto", "Avto (tizim)"], ["light", "Kunduzgi"], ["dark", "Tungi"]] as const).map(([v, l]) => (
+            <button key={v} type="button" className={theme === v ? "on" : ""} onClick={() => setTheme(v)}>{l}</button>
+          ))}
+        </div>
         <div className="wrap" style={{ marginTop: 16 }}>
           {lockSupported() && (lockEnabled()
             ? <button type="button" onClick={() => { disableLock(); toast("Biometrik qulf o'chirildi"); setSettingsOpen(false); }}>🔓 Biometrik qulfni o'chirish</button>
