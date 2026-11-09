@@ -163,6 +163,8 @@ small { font-size: 12.5px; }
 
 /* ---- balans lentasi ---- */
 .card[id] { scroll-margin-top: 72px; }
+.histhead { position: sticky; top: 50px; z-index: 20; background: var(--surface); margin: -16px -16px 0; padding: 14px 16px 10px; border-radius: var(--radius) var(--radius) 0 0; border-bottom: 1px solid var(--line); }
+@media (min-width: 900px) { .histhead { top: 102px; } }
 @keyframes catpulse { 0%, 100% { background: transparent; } 50% { background: var(--move-bg); } }
 .catrow.pulse { animation: catpulse .5s ease 3; border-radius: 8px; }
 .catrow.click { cursor: pointer; }

@@ -23,6 +23,9 @@ export default function History({ computed, accounts, notes, onOpen, cat, onClea
   const [acc, setAcc] = useState<string>("");
   const [type, setType] = useState("all");
   const [state, setState] = useState("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [showRange, setShowRange] = useState(false);
   const [limit, setLimit] = useState(120);
   const [manage, setManage] = useState(false);
   const accByCode = useMemo(() => new Map(accounts.map((a) => [a.code, a])), [accounts]);
@@ -35,6 +38,8 @@ export default function History({ computed, accounts, notes, onOpen, cat, onClea
       const e = computed.entries[i];
       if (acc && e.account !== acc && e.counterparty !== acc && e.unknownCode !== acc) continue;
       if (type !== "all" && e.type !== type) continue;
+      if (from && e.date < from) continue;
+      if (to && e.date > to) continue;
       if (cat && !(e.type === "expense" && (e.category || "toifasiz") === cat)) continue;
       if (state !== "all") {
         if (state === "uncertain" && !e.uncertain) continue;
@@ -46,7 +51,7 @@ export default function History({ computed, accounts, notes, onOpen, cat, onClea
       out.push(e);
     }
     return out;
-  }, [computed, q, acc, type, state, cat]);
+  }, [computed, q, acc, type, state, cat, from, to]);
 
   const groups = useMemo(() => {
     const g: { date: string; items: Entry[]; out: number; inc: number }[] = [];
@@ -61,22 +66,42 @@ export default function History({ computed, accounts, notes, onOpen, cat, onClea
 
   return (
     <div className="card">
-      <div className="row" style={{ marginBottom: 10 }}>
-        <h2>Tarix</h2>
-        <button type="button" className="ghost small" onClick={() => setManage(true)} aria-label="Tarixni boshqarish" title="Tarixni boshqarish: o'chirish / faolsizlantirish">✎ Boshqarish</button>
-      </div>
-      <div className="wrap">
-        <input placeholder="Toifa, izoh yoki matndan izlash…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Qidirish" style={{ flex: "1 1 200px" }} />
-        <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tur" style={{ width: "auto" }}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-        <select value={state} onChange={(e) => setState(e.target.value)} aria-label="Holat" style={{ width: "auto" }}>{STATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-      </div>
-      {cat && (
-        <div className="wrap" style={{ marginTop: 8 }}>
-          <button type="button" className="chip warn" onClick={onClearCat} title="Filtrni olib tashlash">Toifa: {cat} · faqat chiqimlar ✕</button>
+      <div className="histhead">
+        <div className="row">
+          <h2>Tarix</h2>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, minWidth: 0 }}>
+            <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tur" style={{ width: "auto", fontSize: 12.5, padding: "7px 6px" }}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+            <select value={state} onChange={(e) => setState(e.target.value)} aria-label="Holat" style={{ width: "auto", fontSize: 12.5, padding: "7px 6px" }}>{STATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+            <button type="button" className="iconbtn ghost" style={{ width: 36, height: 36, minHeight: 36 }} onClick={() => setManage(true)} aria-label="Tarixni boshqarish" title="Tarixni boshqarish: o'chirish / faolsizlantirish">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 3.5l4 4L8 20l-5 1 1-5z"/></svg>
+            </button>
+          </div>
         </div>
-      )}
-      <div className="tiles row1" style={{ marginTop: 10 }}>
-        {accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => <Tile key={a.id} acc={a} small on={acc === a.code} onClick={() => setAcc(acc === a.code ? "" : a.code)} />)}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 8 }}>
+          <input placeholder="Toifa, izoh yoki matndan izlash…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Qidirish" style={{ flex: 1, minWidth: 0 }} />
+          <button type="button" className={"iconbtn ghost" + (from || to ? " on" : "")} style={{ width: 36, height: 36, minHeight: 36, ...(from || to ? { background: "var(--move-bg)", color: "var(--move)" } : {}) }} onClick={() => setShowRange((v) => !v)} aria-label="Sana oralig'i" title="Sana oralig'i bo'yicha ko'rish">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+          </button>
+          <button type="button" className="iconbtn ghost" style={{ width: 36, height: 36, minHeight: 36, opacity: q ? 1 : .4 }} onClick={() => setQ("")} disabled={!q} aria-label="Qidiruvni tozalash" title="Qidiruv matnini tozalash">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        {showRange && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+            <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="Boshlanish sanasi" style={{ width: "auto", fontSize: 13, padding: 8 }} />
+            <span className="muted">—</span>
+            <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="Tugash sanasi" style={{ width: "auto", fontSize: 13, padding: 8 }} />
+            {(from || to) && <button type="button" className="ghost small" onClick={() => { setFrom(""); setTo(""); }}>✕ tozalash</button>}
+          </div>
+        )}
+        {cat && (
+          <div className="wrap" style={{ marginTop: 8 }}>
+            <button type="button" className="chip warn" onClick={onClearCat} title="Filtrni olib tashlash">Toifa: {cat} · faqat chiqimlar ✕</button>
+          </div>
+        )}
+        <div className="tiles row1" style={{ marginTop: 10 }}>
+          {accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => <Tile key={a.id} acc={a} small on={acc === a.code} onClick={() => setAcc(acc === a.code ? "" : a.code)} />)}
+        </div>
       </div>
       <p className="hint">{rows.length} ta satr{acc ? ` · ${acc}` : ""}. Satrga bosib tahrirlang — dublikat yaratilmaydi.</p>
 
