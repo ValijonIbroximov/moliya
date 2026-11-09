@@ -181,10 +181,11 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
     if (/^[\d+\-−=$]/.test(text)) return { status: "pending", reason: "Hisob qisqartmasi yetishmaydi", fixes };
     return { status: "pending", reason: "Tushunarsiz yozuv — hisob, amal va summa kerak" };
   }
-  // Noma'lum qisqartma "aka/opa" bilan davom etsa — to'liq ism sifatida olamiz ("Mirzabek aka=450")
+  // Qisqartma "aka/opa" bilan davom etsa — to'liq ism sifatida olamiz ("Mirzabek aka=450").
+  // Tanilgan hisobda ham ("Nurislom" taxallusi NI ga mos kelsa) keyingi "aka" ni yutamiz: "Nurislom aka=200"
   let codeTok = am.text;
   let acc = am.acc;
-  if (!acc) {
+  {
     const hm = text.slice(codeTok.length).match(new RegExp(`^\\s+(aka|opa|aya|uka)(?![\\p{L}\\d])`, "iu"));
     if (hm) codeTok = text.slice(0, codeTok.length + hm[0].length);
   }
