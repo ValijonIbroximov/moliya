@@ -202,8 +202,9 @@ small { font-size: 12.5px; }
 .dates button.on small { color: var(--on-ink); opacity: .65; }
 .dates input[type="date"] { width: auto; padding: 8px; font-size: 13px; height: 48px; }
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sugg { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; min-height: 0; }
-.sugg button { font-size: 12px; padding: 3px 9px; min-height: 28px; border-color: transparent; background: var(--surface-2); }
+.sugg { display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-top: 6px; min-height: 0; padding-bottom: 2px; }
+.sugg::-webkit-scrollbar { display: none; }
+.sugg button { font-size: 12px; padding: 3px 9px; min-height: 28px; border-color: transparent; background: var(--surface-2); flex-shrink: 0; white-space: nowrap; }
 .sugg button:hover { background: var(--move-bg); color: var(--move); }
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .status i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
