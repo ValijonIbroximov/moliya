@@ -328,10 +328,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
       <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
         <div className="wrap">
           {note && note.raw.trim() && <button type="button" className="small danger" onClick={removeNote}>O'chirish</button>}
-          <select aria-label="Yozuv birligi" className="small" value={noteUnit} onChange={(e) => { const n = ensureNote(); updateNote(n.id, { unit: +e.target.value === 1 ? 1 : 1000 }); }} style={{ width: "auto" }}>
-            <option value={1000}>1 = 1 000 so'm</option>
-            <option value={1}>1 = 1 so'm</option>
-          </select>
+          {noteUnit === 1 && <span className="chip" title="Bu yozuvda 1 = 1 so'm (Profil → Ma'lumotlar'da o'zgartiriladi)">1 = 1 so'm</span>}
         </div>
         {noteDate !== todayStr && note?.raw.trim() ? <small>Bu yozuv {humanDate(noteDate, false)} uchun. Bugungi uchun «+ Yangi yozuv».</small> : <small>Chala satr ham saqlanadi.</small>}
       </div>

@@ -342,6 +342,17 @@ function Shell() {
 
           <div className="card">
             <h2>Ma'lumotlar</h2>
+            <label className="label">Summa birligi</label>
+            <div className="segment" role="group" aria-label="Summa birligi" style={{ maxWidth: 420 }}>
+              {([[1000, "1 = 1 000 so'm"], [1, "1 = 1 so'm"]] as const).map(([v, l]) => (
+                <button key={v} type="button" className={(app.settings.defaultUnit ?? 1000) === v ? "on" : ""} onClick={() => {
+                  updateSettings({ defaultUnit: v });
+                  const act = app.notes.find((n) => n.id === app.activeNoteId);
+                  if (act && !act.raw.trim()) updateNote(act.id, { unit: v });
+                }}>{l}</button>
+              ))}
+            </div>
+            <p className="hint" style={{ margin: "6px 0 10px" }}>«K -30» odatda 30 ming so'm. Yangi yozuvlarga qo'llanadi — eski yozuvlar birligi o'zgarmaydi.</p>
             <p className="hint" style={{ margin: "8px 0 10px" }}>Xom matn hech qachon avtomatik o'zgartirilmaydi. Eksport faylida barcha yozuvlar, hisoblar va sozlamalar bor — zaxira yoki boshqa qurilmaga ko'chirish uchun.</p>
             <div className="wrap">
               <button type="button" onClick={doExport}>↓ JSON eksport</button>

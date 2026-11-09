@@ -143,7 +143,7 @@ function afterChange(kind: "note" | "account" | "settings", id?: string) {
 
 export function createNote(date?: string): Note {
   const t = nowISO();
-  const n: Note = { id: uid(), raw: "", note_date: date || today(), unit: 1000, disabled: false, deleted: false, created_at: t, updated_at: t };
+  const n: Note = { id: uid(), raw: "", note_date: date || today(), unit: state.settings.defaultUnit === 1 ? 1 : 1000, disabled: false, deleted: false, created_at: t, updated_at: t };
   state.notes = [...state.notes, n];
   state.activeNoteId = n.id;
   emit();

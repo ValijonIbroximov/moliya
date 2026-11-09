@@ -50,6 +50,7 @@ export interface Settings {
   rejectedPairs: string[];
   provider: "openai" | "anthropic" | "gemini";
   ui?: { zoom: number; tile: number }; // interfeys masshtabi (%) va hisob katagi o'lchami (px)
+  defaultUnit?: 1 | 1000; // yangi yozuvlar birligi: 1 = 1 000 so'm (odatiy) yoki 1 = 1 so'm
   widgets?: string[]; // Yozuv ekranidagi vidjetlar
   autoAi?: boolean; // ochilganda kuniga bir marta avtomatik tahlil
   plans?: Plan[];
