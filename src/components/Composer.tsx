@@ -249,7 +249,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         ref={ta}
         className="raw"
         value={raw}
-        placeholder={"K -30 taksi\nN -24-12 obed\nC +10000 = 10000 oylik"}
+        placeholder={"K -30 taksi\nN -24-12 obed"}
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"

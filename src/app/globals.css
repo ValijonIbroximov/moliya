@@ -189,7 +189,7 @@ small { font-size: 12.5px; }
 .segment button.on.in { color: var(--in); }
 .segment button.on.move { color: var(--move); }
 .segment button.on.snap { color: var(--snap); }
-.raw { width: 100%; min-height: 132px; resize: vertical; font-size: 19px; line-height: 1.6; padding: 14px 15px; border-radius: 12px; background: var(--surface-2); border: 1.5px solid var(--line); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: -.2px; }
+.raw { width: 100%; min-height: 92px; field-sizing: content; max-height: 46vh; resize: vertical; font-size: 19px; line-height: 1.6; padding: 14px 15px; border-radius: 12px; background: var(--surface-2); border: 1.5px solid var(--line); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: -.2px; }
 .raw:focus { background: var(--surface); }
 .dates { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
 .dates button, .dates input { flex-shrink: 0; }
