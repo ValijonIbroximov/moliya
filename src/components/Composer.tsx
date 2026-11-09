@@ -20,9 +20,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const toast = useToast();
   const ta = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
-  const [catDraft, setCatDraft] = useState<string | null>(null);
   const [comDraft, setComDraft] = useState<string | null>(null);
-  const [amtDraft, setAmtDraft] = useState<string | null>(null);
   const todayStr = todayFn();
   const raw = note?.raw ?? "";
   const live = accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code));
@@ -124,21 +122,11 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
     applyParts({ ...parts, account: acc, op, target: op === "->" ? target : "", amount, expected: op === "=" ? "" : parts.expected });
   }
 
-  function setAmount(v: string) {
-    setAmtDraft(v);
-    const clean = v.replace(/[^\d+\-.,$ ]/g, "");
-    const acc = parts.account || live[0]?.code || "";
-    applyParts({ ...parts, account: acc, op: parts.op || "-", amount: clean }, false);
-  }
 
-  function setUnit(u: string) {
-    applyParts({ ...parts, account: parts.account || live[0]?.code || "", op: parts.op || "-", unit: u });
-  }
 
-  function setCategory(v: string) {
-    setCatDraft(v);
-    applyParts({ ...parts, account: parts.account || live[0]?.code || "", tail: composeTail(v, tailSplit.comment) }, false);
-  }
+
+
+
   function setComment(v: string) {
     setComDraft(v);
     applyParts({ ...parts, account: parts.account || live[0]?.code || "", tail: composeTail(tailSplit.category, v) }, false);
@@ -174,19 +162,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
     toast(`"${code}" endi ${acc.code} hisobiga tegishli`);
   }
 
-  const catValue = catDraft ?? tailSplit.category;
   const comValue = comDraft ?? tailSplit.comment;
-  const amtValue = amtDraft ?? parts.amount;
-  const catSugg = useMemo(() => {
-    const q = catValue.trim().toLowerCase();
-    const list = computed.knownCategories.filter((c) => c !== q && (!q || c.includes(q)));
-    list.sort((a, b) => (q && a.startsWith(q) ? 0 : 1) - (q && b.startsWith(q) ? 0 : 1));
-    return list.slice(0, 7);
-  }, [catValue, computed.knownCategories]);
-  const comSugg = useMemo(() => {
-    const q = comValue.trim().toLowerCase();
-    return computed.comments.filter((c) => c.toLowerCase() !== q && (!q || c.toLowerCase().includes(q))).slice(0, 5);
-  }, [comValue, computed.comments]);
 
   const noteDate = note?.note_date || todayStr;
   // Tez-tez takrorlanadigan xarajatlar (hisob+summa+toifa kamida 3 marta) — bir bosishda satr
@@ -213,8 +189,6 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   const hiddenBelow = big ? nonEmpty.filter((l) => l.line > curLine + WINDOW).length : 0;
   const notOkCount = nonEmpty.filter((l) => l.status !== "ok" && l.status !== "header").length;
   const dateTiles = Array.from({ length: 6 }, (_, i) => shiftDate(todayStr, -i));
-  const unitSel = parts.unit.trim().toLowerCase();
-  const unitValue = unitSel === "so'm" || unitSel === "som" || unitSel === "sum" || unitSel === "uzs" ? "som" : unitSel === "ming" || unitSel === "k" ? "ming" : unitSel === "$" || unitSel === "usd" ? "usd" : unitSel === "€" || unitSel === "eur" ? "eur" : "";
   const noteUnit = note?.unit ?? 1000;
   const curIsPerson = curAcc?.type === "person";
 
@@ -236,7 +210,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
       <label className="label">Sana</label>
       <div className="dates">
         {dateTiles.map((d, i) => (
-          <button key={d} type="button" className={d === noteDate ? "on" : ""} onClick={() => setDate(d)} aria-label={humanDate(d)}>
+          <button key={d} type="button" className={"day" + (d === noteDate ? " on" : "")} onClick={() => setDate(d)} aria-label={humanDate(d)}>
             {+d.slice(8, 10)}<small>{i === 0 ? "bugun" : i === 1 ? "kecha" : d.slice(5, 7) + "-oy"}</small>
           </button>
         ))}
@@ -281,7 +255,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         autoCorrect="off"
         aria-label="Aqlli matn"
         style={{ marginTop: 12 }}
-        onChange={(e) => { setCatDraft(null); setComDraft(null); setAmtDraft(null); setRaw(e.target.value); setCaret(e.target.selectionStart); }}
+        onChange={(e) => { setComDraft(null); setRaw(e.target.value); setCaret(e.target.selectionStart); }}
         onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
         onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
         onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
@@ -300,29 +274,9 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         </div>
       )}
 
-      <div className="fields" style={{ marginTop: 10 }}>
-        <div>
-          <label className="label" htmlFor="amt">Summa {unitValue ? "" : noteUnit === 1000 && (!curAcc || curAcc.currency === "UZS") ? "· ming so'm" : ""}</label>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input id="amt" inputMode="decimal" autoComplete="off" placeholder="30" value={amtValue} onChange={(e) => setAmount(e.target.value)} onBlur={() => setAmtDraft(null)} />
-            <select aria-label="Birlik" value={unitValue} onChange={(e) => setUnit({ "": "", ming: " ming", som: " so'm", usd: "$", eur: " €" }[e.target.value] || "")} style={{ width: 104, padding: "8px 4px", fontSize: 13 }}>
-              <option value="">{noteUnit === 1000 ? "ming" : "so'm"}</option>
-              <option value="ming">ming</option>
-              <option value="som">so'm</option>
-              <option value="usd">$</option>
-              <option value="eur">€</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="label" htmlFor="cat">Toifa</label>
-          <input id="cat" autoComplete="off" placeholder="taksi, obed…" value={catValue} onChange={(e) => setCategory(e.target.value)} onBlur={() => setCatDraft(null)} />
-          <div className="sugg">{catSugg.map((c) => <button key={c} type="button" onClick={() => setCategory(c)}>{c}</button>)}</div>
-        </div>
-      </div>
-      <label className="label" htmlFor="com">Izoh <span className="muted" style={{ fontWeight: 400 }}>· ixtiyoriy</span></label>
+      <label className="label" htmlFor="com">Izoh <span className="muted" style={{ fontWeight: 400 }}>· ixtiyoriy, vergul bilan toifadan keyin yoziladi</span></label>
       <input id="com" autoComplete="off" placeholder="Kimga, nima uchun…" value={comValue} onChange={(e) => setComment(e.target.value)} onBlur={() => setComDraft(null)} />
-      {comSugg.length > 0 && <div className="sugg">{comSugg.map((c) => <button key={c} type="button" onClick={() => setComment(c)}>{c}</button>)}</div>}
+
 
       {/* Jonli tahlil */}
       <div className="ledger">
@@ -331,9 +285,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
             {nonEmpty.length} satr · {notOkCount ? <span className="danger">{notOkCount} tasi tekshirishni kutmoqda</span> : "hammasi o'qildi"} · kursor atrofidagi {visible.length} satr ko'rsatilmoqda{hiddenAbove ? ` (yuqorida ${hiddenAbove}` : ""}{hiddenBelow ? `${hiddenAbove ? ", " : " ("}pastda ${hiddenBelow}` : ""}{hiddenAbove || hiddenBelow ? ")" : ""}. Hammasi «Tarix» va «Tahlil → Tekshirish kerak» da.
           </p>
         )}
-        {nonEmpty.length === 0 ? (
-          <p className="hint">Yozishni boshlang — har satr darhol tahlil qilinadi va saqlanadi. Saqlash tugmasi yo'q.</p>
-        ) : (
+        {nonEmpty.length === 0 ? null : (
           visible.map((l) => {
             if (l.status === "header") return <div key={l.key} className="lrow" style={{ gridTemplateColumns: "1fr" }}><small>Sana sarlavhasi → {humanDate(l.date, true, true)}</small></div>;
             if (l.status === "note") return <div key={l.key} className={`lrow${l.line === curLine ? " cur" : ""}`} style={{ gridTemplateColumns: "1fr" }}><small style={{ fontStyle: "italic" }}>✎ {l.comment || "(bo'sh eslatma)"} <span className="chip snap">eslatma · hisobga kirmaydi</span></small></div>;

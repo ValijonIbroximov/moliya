@@ -4,12 +4,14 @@
 import type { Account, Computed, Settings } from "./types";
 import { daysBetween, daysInMonth, monthEnd, monthOf, monthStart, shiftDate, shiftMonth } from "./dates";
 import { byCategory, debts, flow, monthlySeries, periodFor, totals } from "./stats";
-import { money, short, pct, num } from "./format";
+import { money, short, pct, num, signed } from "./format";
 
 export interface Insight {
   id: string;
-  icon: string;
-  title: string;
+  icon: string; // emoji
+  title: string; // qisqa yorliq (summasiz)
+  metric?: string; // asosiy raqam — rangli ko'rsatiladi
+  metricCls?: "in" | "out" | "warn" | "move";
   text: string;
   action?: string;
   severity: "info" | "good" | "warn" | "bad";
@@ -39,9 +41,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
     const projected = fToday.expense + avgDaily * daysLeft + flow(ok, { from: monthStart(ym), to: shiftDate(todayStr, -1), label: "" }, "UZS", accounts).expense;
     out.push({
       id: "today-expense",
-      icon: diff > 0 ? "▲" : "▼",
+      icon: "💸",
       severity: ratio >= 2 ? "bad" : ratio >= 1.3 ? "warn" : "good",
-      title: diff > 0 ? `Bugun odatdagidan ${short(diff)} ko'p sarflandi` : `Bugun odatdagidan ${short(-diff)} kam sarflandi`,
+      title: diff > 0 ? "Bugun odatdagidan ko'p sarflandi" : "Bugun odatdagidan kam sarflandi",
+      metric: (diff > 0 ? "+" : "−") + short(Math.abs(diff)),
+      metricCls: diff > 0 ? "out" : "in",
       text: `Bugungi chiqim ${money(fToday.expense)}; oxirgi 30 kundagi kunlik o'rtacha ${money(Math.round(avgDaily))} (${activeDays30} kunda yozuv bor).${topToday ? ` Eng kattasi: ${topToday.category} — ${money(topToday.amount)}.` : ""}`,
       action: diff > 0
         ? `Shu sur'at davom etsa oy oxirida chiqim ≈ ${short(projected)} bo'ladi. ${topToday ? `"${topToday.category}" toifasini ertaga cheklab ko'ring.` : ""}`
@@ -51,7 +55,7 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   } else if (fToday.expense === 0 && f30.expense > 0) {
     out.push({
       id: "today-none",
-      icon: "○",
+      icon: "💤",
       severity: "info",
       title: "Bugun hali chiqim yozilmagan",
       text: `Odatdagi kunlik o'rtacha ${money(Math.round(avgDaily))}. Agar xarajat bo'lgan bo'lsa — bir satr yozing: masalan, "N -24 obed".`,
@@ -63,9 +67,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   if (fToday.income > 0) {
     out.push({
       id: "today-income",
-      icon: "+",
+      icon: "💰",
       severity: "good",
-      title: `Bugun ${money(fToday.income)} kirim bo'ldi`,
+      title: "Bugun kirim bo'ldi",
+      metric: "+" + short(fToday.income),
+      metricCls: "in",
       text: `Oxirgi 30 kundagi jami kirim ${money(f30.income)}.`,
       action: fToday.income >= 1_000_000 ? "Katta kirimning bir qismini darhol ajratib qo'ysangiz (Uy yoki omonat), sarflab yuborish xavfi kamayadi." : undefined,
     });
@@ -93,9 +99,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
     } else action = "Oylik limit qo'ysangiz, qolgan kunlar uchun kunlik imkoniyat avtomatik hisoblanadi.";
     out.push({
       id: "month-projection",
-      icon: "≈",
+      icon: "📅",
       severity: sev,
-      title: `Oy oxirida chiqim ≈ ${short(projected)}${budget ? ` (limit ${short(budget)})` : ""}`,
+      title: "Oy oxiri chiqim prognozi" + (budget ? ` (limit ${short(budget)})` : ""),
+      metric: "≈" + short(projected),
+      metricCls: sev === "good" ? "in" : sev === "info" ? "move" : "out",
       text: `${dayOfMonth} kunda ${money(monthSoFar.expense)} sarflandi, kunlik sur'at ${money(Math.round(pace))}.${vsPrev !== null ? ` O'tgan oyga nisbatan ${vsPrev >= 0 ? "+" : ""}${pct(vsPrev * 100)} (o'tgan oy: ${short(prevMonth.expense)}).` : " O'tgan oy ma'lumoti yo'q."}`,
       action,
       go: "stats",
@@ -115,9 +123,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
     if (paceMonthly > 0) parts.push(`haqiqiy sur'at bo'yicha (o'rtacha sof ${short(paceMonthly)}/oy) ≈ ${Math.ceil(remaining / paceMonthly)} oy`);
     out.push({
       id: "goal",
-      icon: "◎",
+      icon: "🎯",
       severity: remaining === 0 ? "good" : paceMonthly > 0 && planMonthly && paceMonthly < planMonthly ? "warn" : "info",
-      title: remaining === 0 ? `Maqsadga yetildi: ${settings.goalName || "maqsad"}` : `${settings.goalName || "Maqsad"}: yana ${short(remaining)} kerak`,
+      title: remaining === 0 ? `Maqsadga yetildi: ${settings.goalName || "maqsad"}` : `${settings.goalName || "Maqsad"} — yana kerak:`,
+      metric: remaining === 0 ? "100%" : short(remaining),
+      metricCls: remaining === 0 ? "in" : "move",
       text: `${pct(settings.goalTarget ? (settings.goalSaved / settings.goalTarget) * 100 : 0)} yig'ilgan (${money(settings.goalSaved)} / ${money(settings.goalTarget)}). ${parts.length ? "Muddat: " + parts.join("; ") + "." : "Oylik reja kiriting yoki 1–2 oy yozuv to'plang — muddat hisoblanadi."}`,
       action: paceMonthly > 0 && planMonthly && paceMonthly < planMonthly
         ? `Haqiqiy sur'at rejadan ${short(planMonthly - paceMonthly)}/oy kam. Yo chiqimni shu miqdorga qisqartiring, yo muddatni uzaytiring.`
@@ -126,9 +136,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   } else if (fullMonths.length >= 1) {
     out.push({
       id: "net-pace",
-      icon: "◎",
+      icon: "🎯",
       severity: avgNet > 0 ? "good" : "warn",
-      title: avgNet > 0 ? `Oyiga o'rtacha ${short(avgNet)} ortib bormoqda` : `Oyiga o'rtacha ${short(-avgNet)} kamayib bormoqda`,
+      title: avgNet > 0 ? "Pul ortib bormoqda" : "Pul kamayib bormoqda",
+      metric: signed(avgNet) + "/oy",
+      metricCls: avgNet > 0 ? "in" : "out",
       text: `Oxirgi ${fullMonths.length} to'liq oy bo'yicha kirim − chiqim. Maqsad (masalan, uy uchun boshlang'ich to'lov) kiritsangiz, qachon yetishingiz hisoblanadi.`,
       go: "stats",
     });
@@ -141,9 +153,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
     const amtTxt = (v: number) => (d.cur === "UZS" ? num(v / 1000) : num(v) + "$");
     out.push({
       id: "debt-" + d.account.code + "-" + d.cur,
-      icon: "↔",
+      icon: "🤝",
       severity: d.value < 0 ? "warn" : "info",
-      title: d.value >= 0 ? `${d.account.name}: sizga ${money(d.value, d.cur)} qarzdor` : `${d.account.name}: siz ${money(-d.value, d.cur)} qarzdorsiz`,
+      title: d.value >= 0 ? `${d.account.name} — sizga qarzdor:` : `${d.account.name} — siz qarzdorsiz:`,
+      metric: short(Math.abs(d.value), d.cur),
+      metricCls: d.value >= 0 ? "in" : "out",
       text: `${d.known ? "Qoldiq tasdiqlangan" : "Boshlang'ich qoldiq yozilmagan — faqat harakatlar yig'indisi"}. Bu summa mavjud pulga qo'shilmagan.`,
       action: d.value > 0 ? `Qaytganda: "N +${amtTxt(d.value)} ${d.account.code}" deb yozing.` : d.value < 0 ? `Qaytarganda: "N -${amtTxt(-d.value)} ${d.account.code}" deb yozing.` : undefined,
       go: "accounts",
@@ -159,9 +173,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
     const diffSum = diffs.reduce((s, i) => s + (i.amount || 0), 0);
     out.push({
       id: "quality",
-      icon: "≋",
+      icon: "🔍",
       severity: pend || pairs ? "warn" : "info",
-      title: `Tekshirish kerak: ${pend} chala, ${diffs.length} tafovut, ${pairs} ehtimoliy juftlik`,
+      title: `Tekshirish: ${pend} chala · ${diffs.length} tafovut · ${pairs} juftlik`,
+      metric: String(pend + diffs.length + pairs) + " ta",
+      metricCls: "warn",
       text: `${t.known}/${t.all} hisobning qoldig'i tasdiqlangan.${diffs.length ? ` Tafovutlar yig'indisi ${diffSum >= 0 ? "+" : ""}${short(diffSum)} — bu kirim/chiqimga qo'shilmagan.` : ""} Chala satrlar hisobga kirmaydi, shuning uchun prognozlar haqiqiy xarajatdan kam ko'rsatishi mumkin.`,
       action: pend ? "Chala satrlarni to'ldiring — har biri 10 soniya." : t.known < t.all ? `Qoldig'i noma'lum hisoblar uchun "K = 1085" kabi yozing.` : undefined,
       go: "history",
@@ -172,9 +188,11 @@ export function buildInsights(c: Computed, accounts: Account[], settings: Settin
   if (t.home > 0) {
     out.push({
       id: "idle",
-      icon: "%",
+      icon: "🏦",
       severity: "info",
-      title: `Uyda ${short(t.home)} turibdi`,
+      title: "Uyda foizsiz turibdi:",
+      metric: short(t.home),
+      metricCls: "move",
       text: `Bu pul foiz keltirmayapti. Bank omonatlari stavkasi va shartlari tez o'zgaradi — AI markazida rasmiy manbalar bilan tekshiring, keyin omonat kalkulyatorida foydani hisoblang.`,
       action: "AI markazi → «Omonat takliflarini tekshir».",
       go: "ai",

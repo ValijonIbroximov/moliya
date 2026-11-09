@@ -146,13 +146,13 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
         <div className="row"><h2>Nazorat</h2><span className="chip">yozuvlaringiz asosida · AI emas</span></div>
         {insights.length === 0 && <p className="hint">Bir necha kun yozuv to'plansa, bu yerda aniq xulosalar paydo bo'ladi: bugungi chiqim odatdagiga nisbatan, oy oxiri prognozi, qarzlar, maqsadga yetish muddati.</p>}
         {insights.map((i) => (
-          <div key={i.id} className={`insight ${i.severity}`}>
+          <div key={i.id} className={`insight compact ${i.severity}`}>
             <div className="ic">{i.icon}</div>
-            <div>
-              <b>{i.title}</b>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="row" style={{ gap: 8 }}><b>{i.title}</b>{i.metric && <span className={`amt ${i.metricCls || ""}`} style={{ fontSize: 14.5, flexShrink: 0 }}>{i.metric}</span>}</div>
               <p>{i.text}</p>
               {i.action && <div className="act">→ {i.action}</div>}
-              {i.go && <button type="button" className="ghost small" style={{ marginTop: 4, marginLeft: -8 }} onClick={() => onGo(i.go!)}>Ochish</button>}
+              {i.go && <button type="button" className="ghost small" style={{ marginTop: 2, marginLeft: -8 }} onClick={() => onGo(i.go!)}>Ochish</button>}
             </div>
           </div>
         ))}

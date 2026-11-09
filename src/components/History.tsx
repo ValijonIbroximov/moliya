@@ -1,25 +1,28 @@
 "use client";
 import { useMemo, useState } from "react";
-import type { Account, Computed, Entry } from "@/lib/types";
+import type { Account, Computed, Entry, Note } from "@/lib/types";
+import { deleteNote, updateNote } from "@/lib/store";
 import { humanDate, today } from "@/lib/dates";
 import { short } from "@/lib/format";
-import { Amount, Badge, Tile, TypeChip, entryTitle } from "./ui";
+import { Amount, Badge, Modal, Tile, TypeChip, entryTitle, useToast } from "./ui";
 
 interface Props {
   computed: Computed;
   accounts: Account[];
+  notes: Note[];
   onOpen: (noteId: string, line: number) => void;
 }
 
 const TYPES: [string, string][] = [["all", "Barcha turlar"], ["expense", "Chiqim"], ["income", "Kirim"], ["transfer", "O'tkazma"], ["debt", "Qarz"], ["snapshot", "Qoldiq"]];
 const STATES: [string, string][] = [["all", "Barcha holatlar"], ["ok", "Aniq"], ["pending", "Chala"], ["unknown_account", "Noma'lum hisob"], ["unclear", "Noaniq"], ["uncertain", "? belgili"], ["diff", "Tafovutli"]];
 
-export default function History({ computed, accounts, onOpen }: Props) {
+export default function History({ computed, accounts, notes, onOpen }: Props) {
   const [q, setQ] = useState("");
   const [acc, setAcc] = useState<string>("");
   const [type, setType] = useState("all");
   const [state, setState] = useState("all");
   const [limit, setLimit] = useState(120);
+  const [manage, setManage] = useState(false);
   const accByCode = useMemo(() => new Map(accounts.map((a) => [a.code, a])), [accounts]);
   const todayStr = today();
 
@@ -47,13 +50,17 @@ export default function History({ computed, accounts, onOpen }: Props) {
       let last = g[g.length - 1];
       if (!last || last.date !== e.date) { last = { date: e.date, items: [], out: 0, inc: 0 }; g.push(last); }
       last.items.push(e);
-      if (e.status === "ok" && e.currency === "UZS") { if (e.type === "expense") last.out += -e.amount!; if (e.type === "income") last.inc += e.amount!; }
+      if (e.status === "ok" && !e.disabled && e.currency === "UZS") { if (e.type === "expense") last.out += -e.amount!; if (e.type === "income") last.inc += e.amount!; }
     }
     return g;
   }, [rows, limit]);
 
   return (
     <div className="card">
+      <div className="row" style={{ marginBottom: 10 }}>
+        <h2>Tarix</h2>
+        <button type="button" className="ghost small" onClick={() => setManage(true)} aria-label="Tarixni boshqarish" title="Tarixni boshqarish: o'chirish / faolsizlantirish">✎ Boshqarish</button>
+      </div>
       <div className="wrap">
         <input placeholder="Toifa, izoh yoki matndan izlash…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Qidirish" style={{ flex: "1 1 200px" }} />
         <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tur" style={{ width: "auto" }}>{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
@@ -74,12 +81,12 @@ export default function History({ computed, accounts, onOpen }: Props) {
           {g.items.map((e) => {
             const a = e.account ? accByCode.get(e.account) : undefined;
             return (
-              <div key={e.key} className="entry" onClick={() => onOpen(e.noteId, e.line)} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === "Enter") onOpen(e.noteId, e.line); }}>
+              <div key={e.key} className="entry" style={e.disabled ? { opacity: .45 } : undefined} onClick={() => onOpen(e.noteId, e.line)} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === "Enter") onOpen(e.noteId, e.line); }}>
                 <Badge acc={a} code={e.unknownCode || e.account} />
                 <div className="main">
                   <b>{entryTitle(e)}</b>
                   <small>
-                    <TypeChip e={e} /> {e.status !== "ok" ? e.reason : <span className="mono">{e.raw.length > 48 ? e.raw.slice(0, 48) + "…" : e.raw}</span>}
+                    <TypeChip e={e} />{e.disabled ? <span className="chip">o'chiq</span> : null} {e.status !== "ok" ? e.reason : <span className="mono">{e.raw.length > 48 ? e.raw.slice(0, 48) + "…" : e.raw}</span>}
                     {e.diff ? <span className="danger"> · tafovut {e.diff > 0 ? "+" : ""}{short(e.diff, e.currency)}</span> : null}
                     {e.pairedWith && !e.pairPrimary ? " · juft (hisoblanmaydi)" : ""}
                   </small>
@@ -94,6 +101,63 @@ export default function History({ computed, accounts, onOpen }: Props) {
         </div>
       ))}
       {rows.length > limit && <button type="button" style={{ width: "100%", marginTop: 12 }} onClick={() => setLimit(limit + 200)}>Yana ko'rsatish ({rows.length - limit})</button>}
+      <ManageDialog open={manage} onClose={() => setManage(false)} notes={notes} />
     </div>
+  );
+}
+
+
+/** Tarixni boshqarish: muddat bo'yicha o'chirish (eksport bilan) yoki faolsizlantirish/faollashtirish */
+function ManageDialog({ open, onClose, notes }: { open: boolean; onClose: () => void; notes: Note[] }) {
+  const toast = useToast();
+  const live = notes.filter((n) => !n.deleted);
+  const dates = live.map((n) => n.note_date).sort();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const f = from || dates[0] || "";
+  const t = to || dates[dates.length - 1] || "";
+  const sel = live.filter((n) => n.note_date >= f && n.note_date <= t);
+  const selOn = sel.filter((n) => !n.disabled);
+  const selOff = sel.filter((n) => n.disabled);
+
+  function exportNotes(list: Note[], name: string) {
+    const blob = new Blob([JSON.stringify({ version: 1, exported_at: new Date().toISOString(), notes: list }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  function doDelete() {
+    if (!sel.length) return;
+    if (!confirm(`${sel.length} ta yozuv (${f} — ${t}) o'chirilsinmi? Avval nusxasi JSON fayl sifatida yuklab olinadi — keyin import orqali qaytarish mumkin.`)) return;
+    exportNotes(sel, `moliya-ochirilgan-${f}_${t}.json`);
+    for (const n of sel) deleteNote(n.id);
+    toast(`${sel.length} ta yozuv o'chirildi (nusxasi yuklab olindi)`);
+    onClose();
+  }
+  function setDisabled(v: boolean) {
+    const list = v ? selOn : selOff;
+    if (!list.length) return;
+    for (const n of list) updateNote(n.id, { disabled: v });
+    toast(v ? `${list.length} ta yozuv faolsizlantirildi — ko'rinadi, lekin hisoblanmaydi` : `${list.length} ta yozuv qayta faollashtirildi`);
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Tarixni boshqarish">
+      <p className="hint" style={{ marginTop: -6 }}>Muddat yozuv sanasi bo'yicha tanlanadi. Bitta kun uchun ikkala sanani bir xil qiling; butun tarix uchun tegmasdan qoldiring.</p>
+      <div className="fields">
+        <div><label className="label" htmlFor="mf">Boshlanishi</label><input id="mf" type="date" value={f} onChange={(e) => setFrom(e.target.value)} /></div>
+        <div><label className="label" htmlFor="mt">Tugashi</label><input id="mt" type="date" value={t} onChange={(e) => setTo(e.target.value)} /></div>
+      </div>
+      <p className="hint" style={{ marginTop: 10 }}>Tanlandi: <b>{sel.length} ta yozuv</b>{selOff.length ? ` (shundan ${selOff.length} tasi faolsiz)` : ""}.</p>
+      <div className="stack" style={{ gap: 8, marginTop: 10 }}>
+        <button type="button" onClick={() => setDisabled(true)} disabled={!selOn.length}>⏸ Faolsizlantirish ({selOn.length}) — ko'rinadi, hisoblanmaydi</button>
+        <button type="button" onClick={() => setDisabled(false)} disabled={!selOff.length}>▶ Faollashtirish ({selOff.length})</button>
+        <button type="button" className="danger" onClick={doDelete} disabled={!sel.length}>🗑 O'chirish ({sel.length}) — avval JSON nusxasi yuklab olinadi</button>
+      </div>
+      <p className="hint" style={{ marginTop: 10 }}>O'chirilgan yozuvlarni qaytarish: Profil → JSON import → yuklab olingan fayl.</p>
+    </Modal>
   );
 }

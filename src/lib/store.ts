@@ -143,7 +143,7 @@ function afterChange(kind: "note" | "account" | "settings", id?: string) {
 
 export function createNote(date?: string): Note {
   const t = nowISO();
-  const n: Note = { id: uid(), raw: "", note_date: date || today(), unit: 1000, deleted: false, created_at: t, updated_at: t };
+  const n: Note = { id: uid(), raw: "", note_date: date || today(), unit: 1000, disabled: false, deleted: false, created_at: t, updated_at: t };
   state.notes = [...state.notes, n];
   state.activeNoteId = n.id;
   emit();
@@ -158,7 +158,7 @@ export function setActiveNote(id: string | null) {
 }
 
 /** Matn/sana/birlik o'zgarishi — real vaqtda saqlanadi */
-export function updateNote(id: string, patch: Partial<Pick<Note, "raw" | "note_date" | "unit">>) {
+export function updateNote(id: string, patch: Partial<Pick<Note, "raw" | "note_date" | "unit" | "disabled">>) {
   const i = state.notes.findIndex((n) => n.id === id);
   if (i < 0) return;
   const n = { ...state.notes[i], ...patch, updated_at: nowISO() };
@@ -267,7 +267,7 @@ function scheduleFlush(delay = 700) {
   flushTimer = setTimeout(() => { flushTimer = null; void flush(); }, delay);
 }
 
-type NoteRow = { id: string; user_id: string; raw: string; note_date: string; unit: number; deleted: boolean; created_at: string; updated_at: string };
+type NoteRow = { id: string; user_id: string; raw: string; note_date: string; unit: number; disabled?: boolean; deleted: boolean; created_at: string; updated_at: string };
 type AccountRow = { id: string; user_id: string; code: string; name: string; type: string; currency: string; aliases: string[]; color: string; sort: number; archived: boolean; updated_at: string };
 
 export async function flush(): Promise<void> {
@@ -288,7 +288,7 @@ export async function flush(): Promise<void> {
       if (rows.length) { const { error } = await sb.from(TABLES.accounts).upsert(rows, { onConflict: "id" }); if (error) throw error; }
     }
     if (snapshot.notes.length) {
-      const rows: NoteRow[] = state.notes.filter((n) => snapshot.notes.includes(n.id)).map((n) => ({ ...n, user_id: u.id }));
+      const rows: NoteRow[] = state.notes.filter((n) => snapshot.notes.includes(n.id)).map((n) => ({ ...n, disabled: !!n.disabled, user_id: u.id }));
       if (rows.length) { const { error } = await sb.from(TABLES.notes).upsert(rows, { onConflict: "id" }); if (error) throw error; }
     }
     if (snapshot.settings) {

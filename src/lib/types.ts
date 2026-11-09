@@ -22,6 +22,7 @@ export interface Note {
   raw: string; // xom matn — o'zgarmas manba
   note_date: string; // YYYY-MM-DD, sana sarlavhasi bo'lmagan satrlar uchun
   unit: 1 | 1000; // 1 = 1 000 so'm (odatiy) yoki 1 = 1 so'm
+  disabled?: boolean; // faolsizlantirilgan: ko'rinadi, lekin hisobga kirmaydi
   deleted: boolean;
   created_at: string;
   updated_at: string;
@@ -106,6 +107,7 @@ export interface Entry {
   comment?: string;
   tail?: string;
   uncertain?: boolean; // "?" bor
+  disabled?: boolean; // yozuv faolsizlantirilgan — hisobga kirmaydi
   unknownCode?: string;
   // compute() tomonidan to'ldiriladi
   pairedWith?: string; // juftlashgan satr kaliti

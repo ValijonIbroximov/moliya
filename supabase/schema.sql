@@ -33,6 +33,7 @@ create table if not exists public.moliya_notes (
   raw text not null default '',
   note_date date not null,
   unit int not null default 1000 check (unit in (1, 1000)),
+  disabled boolean not null default false,
   deleted boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

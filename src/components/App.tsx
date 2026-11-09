@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Account } from "@/lib/types";
+import type { Account, Currency } from "@/lib/types";
 import { createNote, exportData, importData, initApp, migrateGuest, pruneEmptyNotes, setActiveNote, signOut, updateNote, updateSettings, useApp } from "@/lib/store";
 import { compute } from "@/lib/compute";
 import { humanDate, today } from "@/lib/dates";
@@ -63,6 +63,7 @@ function Shell() {
   const note = useMemo(() => app.notes.find((n) => n.id === app.activeNoteId && !n.deleted) || null, [app.notes, app.activeNoteId]);
   const reviewCount = computed.issues.filter((i) => i.kind !== "snapshot_diff" && i.kind !== "expected_mismatch").length;
   const t = totals(computed, app.accounts, "UZS");
+  const tUsd = totals(computed, app.accounts, "USD");
   const fToday = flow(computed.ok, { from: todayStr, to: todayStr, label: "" }, "UZS", app.accounts);
   const insights = useMemo(() => buildInsights(computed, app.accounts, app.settings, todayStr), [computed, app.accounts, app.settings, todayStr]);
   const accByCode = useMemo(() => new Map(app.accounts.map((a) => [a.code, a])), [app.accounts]);
@@ -166,7 +167,6 @@ function Shell() {
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>
             )}
           </button>
-          <button type="button" className="small" onClick={() => go("profile")} aria-label="Profil va sozlamalar">⚙</button>
         </div>
       </header>
 
@@ -196,13 +196,17 @@ function Shell() {
         <section className="view">
           <div className="balstrip" aria-label="Hisoblar qoldig'i">
             <button type="button" className="tot" onClick={() => go("accounts")} title="Tasdiqlangan pul (qarzlarsiz)"><b>{t.known ? short(t.total) : "—"}</b></button>
-            {app.accounts.filter((a) => !a.archived && a.type !== "report").map((a) => {
-              const b = computed.balances[a.code]?.[a.currency];
-              const v = b && (b.known || b.value !== 0) ? short(a.type === "person" ? b.value : b.value, a.currency) : "—";
+            {app.accounts.filter((a) => !a.archived && a.type !== "report").sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code)).map((a) => {
+              const row = computed.balances[a.code] || {};
+              const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
+              const main = row[a.currency];
+              const txt = cells.length
+                ? cells.map(([cur, b]) => short(b!.value, cur as Currency) + (b!.known ? "" : "·?")).join(" | ")
+                : "—";
               return (
-                <button key={a.id} type="button" onClick={() => go("accounts")} title={a.name + (b?.known ? "" : " · tasdiqlanmagan")}>
+                <button key={a.id} type="button" onClick={() => go("accounts")} title={a.name + (main?.known ? "" : " · tasdiqlanmagan")}>
                   <span className="bcode" style={{ ["--t" as string]: a.color }}>{a.code.slice(0, 3)}</span>
-                  <b className={a.type === "person" ? (b && b.value >= 0 ? "amt in" : "amt out") : undefined}>{v}{b && !b.known ? "·?" : ""}</b>
+                  <b className={a.type === "person" ? (main && main.value >= 0 ? "amt in" : "amt out") : undefined}>{txt}</b>
                 </button>
               );
             })}
@@ -224,10 +228,10 @@ function Shell() {
             <aside className="stack">
               <div className="card" style={{ background: "linear-gradient(160deg,var(--hero-a),var(--hero-b))", color: "#fff", borderColor: "transparent" }}>
                 <small style={{ color: "#aebcc9" }}>Tasdiqlangan pul · {t.known}/{t.all} hisob</small>
-                <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -1, marginTop: 4 }}>{t.known ? money(t.total) : "—"}</div>
+                <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -1, marginTop: 4 }}>{t.known ? money(t.total) : "—"}{tUsd.total !== 0 && <span style={{ fontSize: 17, fontWeight: 700, marginLeft: 8, color: "#9fe3c0" }}>+ {money(tUsd.total, "USD")}</span>}</div>
                 <div className="row" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #3b4e60" }}>
-                  <span><small style={{ color: "#aebcc9" }}>Uyda</small><br /><b>{short(t.home)}</b></span>
-                  <span><small style={{ color: "#aebcc9" }}>Naqd + kartalar</small><br /><b>{short(t.active)}</b></span>
+                  <span><small style={{ color: "#aebcc9" }}>Uyda</small><br /><b>{short(t.home)}{tUsd.home !== 0 ? ` + ${short(tUsd.home, "USD")}` : ""}</b></span>
+                  <span><small style={{ color: "#aebcc9" }}>Naqd + kartalar</small><br /><b>{short(t.active)}{tUsd.active !== 0 ? ` + ${short(tUsd.active, "USD")}` : ""}</b></span>
                   <span><small style={{ color: "#aebcc9" }}>Bugun</small><br /><b style={{ color: "#9fe3c0" }}>+{short(fToday.income)}</b> <b style={{ color: "#ffb3a3" }}>−{short(fToday.expense)}</b></span>
                 </div>
                 {t.known < t.all && <small style={{ color: "#aebcc9", display: "block", marginTop: 8 }}>Qoldig'i noma'lum hisoblar bor — «K = 1085» kabi yozing. Qarzlar va dollar qo'shilmagan.</small>}
@@ -245,8 +249,15 @@ function Shell() {
               <Plans settings={app.settings} accounts={app.accounts} onInsert={insertLines} />
               <div className="card">
                 <div className="row"><h2>Nazorat</h2><button type="button" className="ghost small" onClick={() => go("stats")}>Batafsil →</button></div>
-                {insights.length === 0 ? <p className="hint">Bir necha kun yozuv to'plansa, bu yerda aniq xulosalar paydo bo'ladi.</p> : insights.slice(0, 3).map((i) => (
-                  <div key={i.id} className={`insight ${i.severity}`}><div className="ic">{i.icon}</div><div><b>{i.title}</b><p>{i.text}</p>{i.action && <div className="act">→ {i.action}</div>}</div></div>
+                {insights.length === 0 ? <p className="hint">Bir necha kun yozuv to'plansa, bu yerda aniq xulosalar paydo bo'ladi.</p> : insights.slice(0, 4).map((i) => (
+                  <div key={i.id} className={`insight compact ${i.severity}`}>
+                    <div className="ic">{i.icon}</div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="row" style={{ gap: 8 }}><b>{i.title}</b>{i.metric && <span className={`amt ${i.metricCls || ""}`} style={{ fontSize: 14, flexShrink: 0 }}>{i.metric}</span>}</div>
+                      <p>{i.text}</p>
+                      {i.action && <div className="act">→ {i.action}</div>}
+                    </div>
+                  </div>
                 ))}
               </div>
             </aside>
@@ -254,7 +265,7 @@ function Shell() {
         </section>
       )}
 
-      {tab === "history" && <section className="view"><History computed={computed} accounts={app.accounts} onOpen={openEntry} /></section>}
+      {tab === "history" && <section className="view"><History computed={computed} accounts={app.accounts} notes={app.notes} onOpen={openEntry} /></section>}
       {tab === "stats" && (
         <section className="view">
           <div className="segment" style={{ marginBottom: 14, maxWidth: 420 }} role="tablist" aria-label="Tahlil bo'limi">

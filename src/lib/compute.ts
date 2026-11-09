@@ -28,13 +28,18 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
   const order = new Map(live.map((n, i) => [n.id, i]));
 
   const all: Entry[] = [];
-  for (const n of live) for (const e of parseNote(n, idx, todayStr)) if (e.status !== "header" && e.status !== "empty") all.push(e);
+  for (const n of live)
+    for (const e of parseNote(n, idx, todayStr))
+      if (e.status !== "header" && e.status !== "empty") {
+        if (n.disabled) e.disabled = true;
+        all.push(e);
+      }
 
   all.sort(
     (a, b) => a.date.localeCompare(b.date) || order.get(a.noteId)! - order.get(b.noteId)! || a.line - b.line,
   );
 
-  const ok = all.filter((e) => e.status === "ok");
+  const ok = all.filter((e) => e.status === "ok" && !e.disabled);
 
   // ---- toifalar (ikki bosqich) ----
   const tailCount = new Map<string, number>();
@@ -181,6 +186,7 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
 
   // ---- boshqa masalalar ----
   for (const e of all) {
+    if (e.disabled) continue;
     if (e.status === "pending") issues.push({ kind: "pending", entry: e, text: e.reason || "Chala yozuv" });
     else if (e.status === "unknown_account") issues.push({ kind: "unknown_account", entry: e, text: e.reason || "Noma'lum hisob" });
     else if (e.status === "unclear") issues.push({ kind: "unclear", entry: e, text: e.reason || "Noaniq yozuv" });

@@ -16,44 +16,55 @@ interface Props {
 }
 
 export default function Accounts({ computed, accounts, onWriteBalance, onEdit, onAdd }: Props) {
-  const live = accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort);
+  const live = accounts.filter((a) => !a.archived).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code));
   const archived = accounts.filter((a) => a.archived);
+
+  /** Tartibni o'zgartirish: qo'shni bilan o'rin almashadi — Yozuv bo'limidagi kataklar ham shu tartibda chiqadi */
+  function move(a: Account, dir: -1 | 1) {
+    const i = live.findIndex((x) => x.id === a.id);
+    const j = i + dir;
+    if (j < 0 || j >= live.length) return;
+    const b = live[j];
+    upsertAccount({ ...a, sort: j });
+    upsertAccount({ ...b, sort: i });
+  }
+
   return (
     <div className="stack">
       <div className="row">
-        <p className="muted" style={{ fontSize: 13 }}>«=» tugmasi — qoldiq yozish. Dollar alohida yuritiladi, qarzlar jami pulga qo'shilmaydi.</p>
+        <p className="muted" style={{ fontSize: 13 }}>↑↓ — tartib (Yozuvdagi kataklar shu tartibda) · «=» — qoldiq yozish. Qarzlar jami pulga qo'shilmaydi.</p>
         <button type="button" className="primary" onClick={onAdd} style={{ flexShrink: 0 }}>+ Hisob</button>
       </div>
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: 10 }}>
-        {live.map((a) => {
+      <div className="stack" style={{ gap: 7 }}>
+        {live.map((a, idx) => {
           const row = computed.balances[a.code] || {};
           const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0)) as [Currency, { value: number; known: boolean; lastSnapshot?: string }][];
           const main = row[a.currency];
           return (
-            <div key={a.id} className="card acccard">
-              <div className="row" style={{ alignItems: "flex-start" }}>
-                <Badge acc={a} />
-                <span style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                  <button type="button" className="ghost small" style={{ padding: "4px 7px" }} onClick={() => onWriteBalance(a.code)} aria-label="Qoldiq yozish" title="Qoldiq yozish (=)">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9.5h12M6 14.5h12"/></svg>
-                  </button>
-                  <button type="button" className="ghost small" style={{ padding: "4px 7px" }} onClick={() => onEdit(a)} aria-label="Tahrirlash" title="Tahrirlash">✎</button>
-                </span>
+            <div key={a.id} className="card accrow">
+              <Badge acc={a} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <b style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>{a.name}</b>
+                <small style={{ fontSize: 11 }}>
+                  {ACC_TYPE_LABEL[a.type]}
+                  {main && !main.known ? <span style={{ color: "var(--warn)" }}> · qoldiq yozilmagan</span> : main?.lastSnapshot ? ` · ✓ ${humanDate(main.lastSnapshot, false)}` : ""}
+                </small>
               </div>
-              <b style={{ display: "block", fontSize: 13, margin: "7px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>{a.name}</b>
-              <div style={{ marginTop: 4 }}>
-                {cells.length === 0 && <div className="row"><b style={{ fontSize: 17 }}>—</b><small style={{ fontSize: 10.5 }}>yozilmagan</small></div>}
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                {cells.length === 0 && <b style={{ fontSize: 15 }}>—</b>}
                 {cells.map(([cur, b]) => (
-                  <div key={cur} className="row" style={{ gap: 6, padding: "1px 0" }}>
-                    <b style={{ fontSize: cur === a.currency ? 17 : 14, letterSpacing: -.3, whiteSpace: "nowrap" }} className={a.type === "person" ? (b.value >= 0 ? "amt in" : "amt out") : undefined}>
-                      {b.known ? money(a.type === "person" ? Math.abs(b.value) : b.value, cur) : signed(b.value, cur) + " ·?"}
-                    </b>
-                    <small style={{ fontSize: 10.5, textAlign: "right", whiteSpace: "nowrap" }} title={b.known ? "Tasdiqlangan" + (b.lastSnapshot ? " · " + humanDate(b.lastSnapshot, false) : "") : "Qoldiq yozilmagan — faqat harakat yig'indisi"}>
-                      {a.type === "person" ? (b.value >= 0 ? "qarzdor" : "berasiz") : b.known ? "✓" : "·?"}
-                    </small>
-                  </div>
+                  <b key={cur} style={{ display: "block", fontSize: cur === a.currency ? 15.5 : 13, letterSpacing: -.3, lineHeight: 1.25 }} className={a.type === "person" ? (b.value >= 0 ? "amt in" : "amt out") : undefined} title={a.type === "person" ? (b.value >= 0 ? "sizga qarzdor" : "siz qarzdorsiz") : b.known ? "tasdiqlangan" : "faqat harakat yig'indisi"}>
+                    {b.known ? money(a.type === "person" ? Math.abs(b.value) : b.value, cur) : signed(b.value, cur) + " ·?"}
+                  </b>
                 ))}
-                {!main?.known && cells.length > 0 && <small style={{ display: "block", color: "var(--warn)", fontSize: 10.5 }}>«{a.code} = …» deb tasdiqlang</small>}
+              </div>
+              <div className="accbtns">
+                <button type="button" className="ghost small" onClick={() => move(a, -1)} disabled={idx === 0} aria-label="Yuqoriga">↑</button>
+                <button type="button" className="ghost small" onClick={() => move(a, 1)} disabled={idx === live.length - 1} aria-label="Pastga">↓</button>
+                <button type="button" className="ghost small" onClick={() => onWriteBalance(a.code)} aria-label="Qoldiq yozish" title="Qoldiq yozish (=)">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9.5h12M6 14.5h12"/></svg>
+                </button>
+                <button type="button" className="ghost small" onClick={() => onEdit(a)} aria-label="Tahrirlash" title="Tahrirlash">✎</button>
               </div>
             </div>
           );
