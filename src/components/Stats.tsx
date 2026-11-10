@@ -298,39 +298,67 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
   const exchanges = monthEntries.filter((e) => e.type === "transfer" && e.exchange && e.pairPrimary);
   const sumBegin = counted.reduce((s2, a) => s2 + (begin[a.code]?.UZS || 0) + (usd ? (begin[a.code]?.USD || 0) * usd : 0), 0);
   const diffBegin = Math.round(m.borEdi - sumBegin);
+  const Row = ({ d, showD, acc, txt, amt, cls }: { d?: string; showD?: boolean; acc?: string; txt?: string; amt: string; cls?: string }) => (
+    <div className="reprow">
+      <span className="rd">{d && showD ? dd(d) : ""}</span>
+      {acc !== undefined && <span className="racc">{acc}</span>}
+      <span className="rtxt">{txt || ""}</span>
+      <span className={"ramt " + (cls || "")}>{amt}</span>
+    </div>
+  );
+  let lastD = "";
+  const withD = (d: string) => { const show = d !== lastD; lastD = d; return show; };
   return (
     <Modal open={open} onClose={onClose} title="Bu oy — batafsil hisobot">
-      <p className="hint" style={{ marginTop: 0 }}>Bor edi {short(m.borEdi)} + oylik {short(m.income)} = <b>{short(m.jami)}</b> · qoldi {short(m.qoldi)} · sarflandi {short(m.sarflandi)}{m.usdApplied ? " · $ CBU kursi bilan" : ""}</p>
+      <div className="repstat">
+        <div><small>Bor edi</small><b>{short(m.borEdi)}</b></div>
+        <div><small>+ Oylik</small><b className="amt in">{short(m.income)}</b></div>
+        <div><small>= Jami</small><b>{short(m.jami)}</b></div>
+        <div><small>Qoldi</small><b className="amt in">{short(m.qoldi)}</b></div>
+        <div><small>Sarflandi</small><b className="amt out">{short(m.sarflandi)}</b></div>
+      </div>
+      {m.usdApplied && <p className="hint" style={{ margin: "4px 0 0" }}>$ hisoblar CBU kursi bilan so'mga aylantirib qo'shilgan.</p>}
 
-      <h3 style={{ margin: "12px 0 4px" }}>Oy boshida ({dd(start)}) hisoblarda</h3>
-      {counted.map((a) => {
-        const u = begin[a.code]?.UZS || 0, d = begin[a.code]?.USD || 0;
-        if (!u && !d) return null;
-        return <p key={a.id} className="mono" style={{ margin: "2px 0" }}>{a.code} — {money(u)}{d ? ` | ${money(d, "USD")}` : ""}</p>;
-      })}
-      <p className="mono" style={{ margin: "4px 0" }}><b>Jami: {short(sumBegin)}</b>{Math.abs(diffBegin) > 1000 ? <span className="muted"> · formula bilan farq {short(diffBegin)} (qarz/tafovut/konvert harakatlari hisobiga)</span> : null}</p>
+      <div className="repsec">
+        <h3>Oy boshida hisoblarda <span className="chip">{dd(start)}</span></h3>
+        {counted.map((a) => {
+          const u = begin[a.code]?.UZS || 0, d = begin[a.code]?.USD || 0;
+          if (!u && !d) return null;
+          return <Row key={a.id} acc={a.code} txt={a.name !== a.code ? a.name : ""} amt={[u ? money(u) : "", d ? money(d, "USD") : ""].filter(Boolean).join(" | ")} />;
+        })}
+        <div className="repsum"><span>Jami</span><b>{short(sumBegin)}</b></div>
+        {Math.abs(diffBegin) > 1000 && <p className="hint" style={{ margin: "4px 0 0" }}>Formula bilan farq {short(diffBegin)} — qarz, tafovut yoki konvert harakatlari hisobiga.</p>}
+      </div>
 
-      <h3 style={{ margin: "12px 0 4px" }}>Kirimlar · {short(m.income)}</h3>
-      {incomes.length === 0 && <p className="hint">Bu oy kirim yozilmagan.</p>}
-      {incomes.map((e) => <p key={e.key} className="mono" style={{ margin: "2px 0" }}>{dd(e.date)} · {e.account} <b className="amt in">+{short(e.amount!, e.currency)}</b>{e.tail ? ` — ${e.tail}` : ""}</p>)}
+      <div className="repsec">
+        <h3>Kirimlar <span className="chip ok">{short(m.income)} · {incomes.length} ta</span></h3>
+        {incomes.length === 0 && <p className="hint">Bu oy kirim yozilmagan.</p>}
+        {(lastD = "") || incomes.map((e) => <Row key={e.key} d={e.date} showD={withD(e.date)} acc={e.account} txt={e.tail || ""} amt={"+" + short(e.amount!, e.currency)} cls="amt in" />)}
+      </div>
 
-      {exchanges.length > 0 && <>
-        <h3 style={{ margin: "12px 0 4px" }}>Ayirboshlash</h3>
-        {exchanges.map((e) => <p key={e.key} className="mono" style={{ margin: "2px 0" }}>{dd(e.date)} · {e.account} {short(e.amount!)} → {e.counterparty}</p>)}
-      </>}
+      {exchanges.length > 0 && (
+        <div className="repsec">
+          <h3>Ayirboshlash <span className="chip">{exchanges.length} ta</span></h3>
+          {(lastD = "") || exchanges.map((e) => <Row key={e.key} d={e.date} showD={withD(e.date)} acc={e.account} txt={`→ ${e.counterparty} ga o'tkazildi`} amt={short(Math.abs(e.amount!))} />)}
+        </div>
+      )}
 
-      <h3 style={{ margin: "12px 0 4px" }}>Chiqimlar · {short(m.sarflandi)}</h3>
-      {expenses.slice(0, 120).map((e) => <p key={e.key} className="mono" style={{ margin: "2px 0" }}>{dd(e.date)} · {e.account} <b className="amt out">{short(e.amount!, e.currency)}</b>{e.category ? ` — ${e.category}` : ""}{e.comment ? ` (${e.comment})` : ""}</p>)}
-      {expenses.length > 120 && <p className="hint">… yana {expenses.length - 120} ta satr — Tarixda to'liq.</p>}
+      <div className="repsec">
+        <h3>Chiqimlar <span className="chip warn">{short(m.sarflandi)} · {expenses.length} ta</span></h3>
+        {(lastD = "") || expenses.slice(0, 120).map((e) => <Row key={e.key} d={e.date} showD={withD(e.date)} acc={e.account} txt={(e.category || "") + (e.comment ? ` · ${e.comment}` : "")} amt={short(e.amount!, e.currency)} cls="amt out" />)}
+        {expenses.length > 120 && <p className="hint">… yana {expenses.length - 120} ta satr — Tarixda to'liq.</p>}
+      </div>
 
-      <h3 style={{ margin: "12px 0 4px" }}>Hozir hisoblarda</h3>
-      {counted.map((a) => {
-        const row = computed.balances[a.code] || {};
-        const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
-        if (!cells.length) return null;
-        return <p key={a.id} className="mono" style={{ margin: "2px 0" }}>{a.code} — {cells.map(([cur, b]) => money(b!.value, cur as Currency) + (b!.known ? "" : " ·?")).join(" | ")}</p>;
-      })}
-      <p className="mono" style={{ margin: "4px 0" }}><b>Qoldi: {short(m.qoldi)}</b></p>
+      <div className="repsec">
+        <h3>Hozir hisoblarda</h3>
+        {counted.map((a) => {
+          const row = computed.balances[a.code] || {};
+          const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
+          if (!cells.length) return null;
+          return <Row key={a.id} acc={a.code} txt={a.name !== a.code ? a.name : ""} amt={cells.map(([cur, b]) => money(b!.value, cur as Currency) + (b!.known ? "" : " ·?")).join(" | ")} />;
+        })}
+        <div className="repsum"><span>Qoldi</span><b className="amt in">{short(m.qoldi)}</b></div>
+      </div>
     </Modal>
   );
 }
