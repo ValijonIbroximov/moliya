@@ -28,6 +28,14 @@ export interface Note {
   updated_at: string;
 }
 
+/** "Bu oy" taqsimoti qatori: nomi + summa (USD bo'lsa kurs bo'yicha so'mga aylantiriladi) */
+export interface MonthPlanItem {
+  id: string;
+  name: string;
+  amount: number; // ming so'm/dollar emas — oddiy birlikda (so'm yoki $)
+  currency: "UZS" | "USD";
+}
+
 /** Hisobning ko'rinish sozlamalari (Settings ichida saqlanadi — jadval o'zgartirish talab qilmaydi) */
 export interface AccountPref {
   hideHome?: boolean; // bosh sahifadagi qoldiq qatorida ko'rsatilmasin
@@ -58,6 +66,7 @@ export interface Settings {
   ui?: { zoom: number; tile: number }; // interfeys masshtabi (%) va hisob katagi o'lchami (px)
   defaultUnit?: 1 | 1000; // yangi yozuvlar birligi: 1 = 1 000 so'm (odatiy) yoki 1 = 1 so'm
   accountPrefs?: Record<string, AccountPref>; // hisob id -> ko'rinish/jami sozlamalari
+  monthPlan?: MonthPlanItem[]; // "Bu oy" taqsimoti (Tahlil)
   widgets?: string[]; // Yozuv ekranidagi vidjetlar
   autoAi?: boolean; // ochilganda kuniga bir marta avtomatik tahlil
   plans?: Plan[];

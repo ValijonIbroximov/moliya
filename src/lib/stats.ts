@@ -84,6 +84,17 @@ export function flow(ok: Entry[], p: Period, cur: Currency, accounts: Account[])
   return f;
 }
 
+/** "Bu oy" xulosasi: bor edi + oylik(kirim) = jami; qoldi = hozirgi tasdiqlangan pul; sarflandi = chiqimlar */
+export function monthSummary(c: Computed, accounts: Account[], todayStr: string, prefs?: Record<string, { excludeTotal?: boolean } | undefined>) {
+  const ym = monthOf(todayStr);
+  const p: Period = { from: monthStart(ym), to: monthEnd(ym), label: ym };
+  const f = flow(c.ok, p, "UZS", accounts);
+  const t = totals(c, accounts, "UZS", prefs);
+  const qoldi = t.total;
+  const borEdi = qoldi + f.expense - f.income; // jami = borEdi + kirim = qoldi + sarflandi
+  return { borEdi, income: f.income, jami: borEdi + f.income, qoldi, sarflandi: f.expense, known: t.known };
+}
+
 export interface CatRow { category: string; amount: number; count: number; share: number }
 
 export function byCategory(ok: Entry[], p: Period, cur: Currency, type: "expense" | "income" = "expense"): CatRow[] {

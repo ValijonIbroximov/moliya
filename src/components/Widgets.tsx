@@ -5,10 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { Account, Computed, Settings } from "@/lib/types";
 import { daysInMonth, monthOf, monthStart, shiftDate, today } from "@/lib/dates";
 import { num, pct, short, signed } from "@/lib/format";
-import { dailySeries, debts, flow } from "@/lib/stats";
+import { dailySeries, debts, flow, monthSummary } from "@/lib/stats";
 
 export const WIDGET_DEFS: [string, string][] = [
   ["today", "Bugun (kirim/chiqim)"],
+  ["month", "Bu oy (bor edi + oylik = jami)"],
   ["week", "14 kun chiqim grafigi"],
   ["income", "14 kun kirim grafigi"],
   ["limit", "Oylik limit"],
@@ -16,7 +17,7 @@ export const WIDGET_DEFS: [string, string][] = [
   ["debt", "Qarzlar"],
   ["rate", "USD kursi (MB)"],
 ];
-export const DEFAULT_WIDGETS = ["today", "week", "limit", "goal"];
+export const DEFAULT_WIDGETS = ["today", "month", "week", "limit", "goal"];
 
 let rateCache: { rate: number; diff: number; date: string } | null | undefined;
 
@@ -57,6 +58,17 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
         <small className="muted">{fToday.count} ta yozuv</small>
       </button>
     )});
+
+  if (enabled.includes("month")) {
+    const m = monthSummary(computed, accounts, todayStr, settings.accountPrefs);
+    items.push({ id: "month", el: (
+      <button type="button" className="wtile wide" onClick={() => onGo("stats", "monthplan")}>
+        <small>Bu oy · {short(m.borEdi)} + {short(m.income)} oylik</small>
+        <b>= {short(m.jami)}{m.known ? "" : " ·?"}</b>
+        <small><span className="amt in">Qoldi {short(m.qoldi)}</span> · <span className="amt out">Sarf {short(m.sarflandi)}</span></small>
+      </button>
+    )});
+  }
 
   if (enabled.includes("week"))
     items.push({ id: "week", el: (

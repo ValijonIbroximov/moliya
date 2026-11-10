@@ -1,10 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
-import type { Account, Computed, Currency, Issue, Settings } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import type { Account, Computed, Currency, Issue, MonthPlanItem, Settings } from "@/lib/types";
 import { updateSettings, upsertAccount } from "@/lib/store";
 import { humanDate, today } from "@/lib/dates";
 import { money, pct, short, signed } from "@/lib/format";
-import { bucketize, byCategory, dailySeries, debts, flow, monthlySeries, periodFor, previousPeriod, totals } from "@/lib/stats";
+import { bucketize, byCategory, dailySeries, debts, flow, monthlySeries, monthSummary, periodFor, previousPeriod, totals } from "@/lib/stats";
 import { buildInsights } from "@/lib/insights";
 import { monthNameUz, monthShortUz } from "@/lib/dates";
 import { Donut, GroupedBars } from "./charts";
@@ -40,6 +40,20 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
   const months = monthlySeries(computed.ok, cur, todayStr, 6);
   const t = totals(computed, accounts, cur, settings.accountPrefs);
   const ds = debts(computed, accounts, settings.accountPrefs);
+  const msum = monthSummary(computed, accounts, today(), settings.accountPrefs);
+  const plan: MonthPlanItem[] = settings.monthPlan || [];
+  const [usd, setUsd] = useState<number | null>(null);
+  useEffect(() => {
+    fetch("/api/rates").then((r) => r.json()).then((j) => {
+      const u = j?.rates?.find((x: { ccy: string }) => x.ccy === "USD");
+      setUsd(u ? u.rate : null);
+    }).catch(() => setUsd(null));
+  }, []);
+  function setPlan(next: MonthPlanItem[]) { updateSettings({ monthPlan: next }); }
+  const itemUZS = (it: MonthPlanItem) => it.currency === "UZS" ? it.amount * 1000 : usd ? it.amount * usd : 0;
+  const planSum = plan.reduce((t, it) => t + itemUZS(it), 0);
+  const planRem = msum.jami - planSum;
+  const planDaily = planRem / 30;
   const diffs = computed.issues.filter((i) => (i.kind === "snapshot_diff" || i.kind === "expected_mismatch") && i.currency === cur);
   const insights = useMemo(() => buildInsights(computed, accounts, settings, todayStr), [computed, accounts, settings, todayStr]);
   const review = computed.issues.filter((i) => i.kind !== "snapshot_diff" && i.kind !== "expected_mismatch");
@@ -191,6 +205,33 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
             <input id="goalMonthly" inputMode="numeric" placeholder="2000000" value={settings.goalMonthly || ""} onChange={(e) => updateSettings({ goalMonthly: Math.max(0, Number(e.target.value.replace(/\D/g, "")) || 0) })} />
           </div>
         </div>
+      </div>
+
+      <div className="card" id="monthplan">
+        <div className="row"><h2>Bu oy taqsimoti</h2><span className="chip">{short(msum.jami)}</span></div>
+        <p className="hint" style={{ margin: "6px 0 10px" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · hozir qoldi {short(msum.qoldi)}, sarflandi {short(msum.sarflandi)}</p>
+        {plan.map((it) => (
+          <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
+            <input value={it.name} placeholder="Nomi (Sirdaryo, Kvartira…)" onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, name: e.target.value } : x))} style={{ flex: 1, minWidth: 0, fontSize: 13.5, padding: "8px 10px" }} />
+            <input inputMode="decimal" value={it.amount || ""} placeholder="0" onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")) || 0; setPlan(plan.map((x) => x.id === it.id ? { ...x, amount: v } : x)); }} style={{ width: 86, fontSize: 13.5, padding: "8px 8px", textAlign: "right" }} aria-label="Summa" />
+            <select value={it.currency} onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, currency: e.target.value as "UZS" | "USD" } : x))} aria-label="Valyuta" style={{ width: "auto", fontSize: 12.5, padding: "8px 4px" }}>
+              <option value="UZS">ming</option>
+              <option value="USD">$</option>
+            </select>
+            <span className="muted" style={{ fontSize: 11.5, width: 64, textAlign: "right", flexShrink: 0 }}>{it.currency === "USD" ? (usd ? "≈ " + short(it.amount * usd) : "kurs…") : short(it.amount * 1000)}</span>
+            <button type="button" className="ghost small" onClick={() => setPlan(plan.filter((x) => x.id !== it.id))} aria-label="O'chirish" style={{ padding: "4px 8px" }}>✕</button>
+          </div>
+        ))}
+        <button type="button" className="ghost small" style={{ marginTop: 8 }} onClick={() => setPlan([...plan, { id: crypto.randomUUID(), name: "", amount: 0, currency: "UZS" }])}>+ Qator qo'shish</button>
+        {plan.length > 0 && (
+          <div style={{ marginTop: 10, borderTop: "1px solid var(--line)", paddingTop: 8 }}>
+            <p style={{ margin: 0 }}>Taqsimlandi: <b>{short(planSum)}</b>{plan.some((it) => it.currency === "USD") && !usd ? <span className="muted"> · $ qatorlar kurs yuklanmagani uchun hisobga kirmadi</span> : null}</p>
+            <p style={{ margin: "4px 0 0" }}>Sarflash uchun qoldi: <b className={planRem >= 0 ? "amt in" : "amt out"}>{short(planRem)}</b></p>
+            {planRem >= 0
+              ? <p className="hint" style={{ margin: "4px 0 0" }}>Kuniga ~<b>{short(planDaily)}</b> (qoldi ÷ 30) dan oshmasangiz, kelasi oyga yetadi.</p>
+              : <p className="hint" style={{ margin: "4px 0 0" }}>Taqsimot «Bu oy» jamidan oshib ketdi — qatorlarni qayta ko'rib chiqing.</p>}
+          </div>
+        )}
       </div>
 
       <div className="card">
