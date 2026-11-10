@@ -63,6 +63,23 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
   const catFreq = new Map<string, number>();
   const bump = (c: string) => catFreq.set(c, (catFreq.get(c) || 0) + 1);
 
+  // ---- konvertga yuborish = chiqim ----
+  // "Uy -20000 sirdaryoga": nishon konvert (shaxs + jamiga qo'shilmaydi) bo'lsa, bu qarz/o'tkazma emas,
+  // haqiqiy chiqim: pul uydan ketdi. Toifasi konvert nomi bo'ladi, konvert balansiga aks yozilmaydi
+  // (foydalanuvchi "Sirdaryo = 0" bilan o'zi tushiradi).
+  const isKonvert = (code?: string) => {
+    const a = code ? accByCode.get(code) : undefined;
+    return !!(a && a.type === "person" && settings.accountPrefs?.[a.id]?.excludeTotal);
+  };
+  for (const e of ok) {
+    if (e.status !== "ok" || e.amount === undefined || e.amount >= 0) continue;
+    if (!e.counterparty || !isKonvert(e.counterparty) || isKonvert(e.account)) continue;
+    const a = accByCode.get(e.counterparty)!;
+    e.type = "expense";
+    e.counterparty = undefined;
+    e.tail = e.tail ? `${a.code}, ${e.tail}` : a.code;
+  }
+
   for (const e of ok) {
     if (e.type === "total") { e.category = "jami"; continue; }
     if (e.type === "snapshot") { e.category = "qoldiq"; e.comment = e.tail || ""; continue; }

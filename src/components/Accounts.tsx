@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import type { Account, Computed, Currency } from "@/lib/types";
 import { CURRENCIES } from "@/lib/types";
 import { deleteAccount, updateSettings, upsertAccount, useApp } from "@/lib/store";
-import { money, signed } from "@/lib/format";
+import { money, short, signed } from "@/lib/format";
+import { sentToAccount } from "@/lib/stats";
 import { humanDate } from "@/lib/dates";
 import { ACC_TYPE_LABEL, Badge, Modal, useToast } from "./ui";
 
@@ -52,6 +53,14 @@ export default function Accounts({ computed, accounts, onWriteBalance, onEdit, o
                   {prefs[a.id]?.excludeTotal ? <span className="muted"> · jamiga qo'shilmaydi</span> : null}
                   {main && !main.known ? <span style={{ color: "var(--warn)" }}> · qoldiq yozilmagan</span> : main?.lastSnapshot ? ` · ✓ ${humanDate(main.lastSnapshot, false)}` : ""}
                 </small>
+                {a.type === "person" && prefs[a.id]?.excludeTotal && (() => {
+                  const sent = sentToAccount(computed, a);
+                  return sent.length ? (
+                    <small style={{ fontSize: 11, display: "block", color: "var(--move)" }} title="Toifasida shu hisob nomi yozilgan chiqimlar yig'indisi (butun tarix)">
+                      Yuborilgan jami: {sent.map((x) => short(x.value, x.cur)).join(" | ")}
+                    </small>
+                  ) : null;
+                })()}
               </div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 {cells.length === 0 && <b style={{ fontSize: 15 }}>—</b>}

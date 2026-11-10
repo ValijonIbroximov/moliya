@@ -2,6 +2,7 @@
 
 import type { Account, Computed, Currency, Entry } from "./types";
 import { daysBetween, monthEnd, monthOf, monthStart, shiftDate, shiftMonth } from "./dates";
+import { normCode } from "./parser";
 
 export interface Flow {
   income: number;
@@ -82,6 +83,28 @@ export function flow(ok: Entry[], p: Period, cur: Currency, accounts: Account[])
   f.net = f.income - f.expense;
   for (const k of Object.keys(f) as (keyof Flow)[]) f[k] = Math.round(f[k] * 100) / 100;
   return f;
+}
+
+/** Konvert-hisobga (masalan Sirdaryo) shu paytgacha yuborilgan jami: toifasi/izohi shu hisobni
+ * eslatgan chiqimlar yig'indisi ("Uy -20000 sirdaryoga" → sirdaryo). Valyuta bo'yicha ajratiladi. */
+export function sentToAccount(c: Computed, acc: Account): { cur: Currency; value: number }[] {
+  const names = new Set([normCode(acc.code), normCode(acc.name), ...(acc.aliases || []).map(normCode)].filter(Boolean));
+  const hit = (word: string) => {
+    const t = normCode(word);
+    if (names.has(t)) return true;
+    for (const suf of ["dan", "gacha", "ga", "ge", "da"]) {
+      if (t.length > suf.length && t.endsWith(suf) && names.has(t.slice(0, -suf.length).trim())) return true;
+    }
+    return false;
+  };
+  const sums = new Map<Currency, number>();
+  for (const e of c.ok) {
+    if (e.type !== "expense" || e.status !== "ok" || e.disabled) continue;
+    const words = `${e.category || ""} ${e.comment || ""} ${e.tail || ""}`.split(/\s+/).filter(Boolean);
+    if (!words.some(hit)) continue;
+    sums.set(e.currency!, (sums.get(e.currency!) || 0) + -e.amount!);
+  }
+  return [...sums.entries()].map(([cur, value]) => ({ cur, value })).sort((a, b) => a.cur.localeCompare(b.cur));
 }
 
 /** "Bu oy" xulosasi: bor edi + oylik(kirim) = jami; qoldi = hozirgi tasdiqlangan pul; sarflandi = chiqimlar */
