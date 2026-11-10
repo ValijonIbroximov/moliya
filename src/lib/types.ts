@@ -129,7 +129,8 @@ export interface Entry {
   unknownCode?: string;
   // compute() tomonidan to'ldiriladi
   pairedWith?: string; // juftlashgan satr kaliti
-  pairPrimary?: boolean; // juftlikda balansga qo'llangan tomon
+  pairPrimary?: boolean;
+  exchange?: boolean; // valyuta ayirboshlash juftligi (har tomon o'z valyutasida) // juftlikda balansga qo'llangan tomon
   diff?: number; // qoldiq tafovuti (snapshot / kutilgan)
   balanceAfter?: number;
   sig?: string; // juftlik imzosi

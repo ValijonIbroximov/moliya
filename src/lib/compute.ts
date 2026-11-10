@@ -124,6 +124,34 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
     }
   }
 
+  // ---- valyuta ayirboshlash juftligi ----
+  // "C -3583803 so'm 300$ sotib olindi" + "Uy +300$ C dan" — turli valyuta, summalar teng bo'lmaydi.
+  // Shart: hint ("C dan") boshqa hisobga ko'rsatsin, qarama-qarshi ishora, bir sana, va satrlardan
+  // birida $ / dollar / valyuta / kurs / ayirbosh so'zi bo'lsin. Ikkala tomon ham transfer bo'ladi.
+  const exMention = (x: Entry) => /[$]|dollar|valyuta|kurs|ayirbosh/i.test((x.tail || "") + " " + (x.raw || ""));
+  for (let i = 0; i < ok.length; i++) {
+    const e = ok[i];
+    if (!pairable(e) || !e.counterparty) continue;
+    if (accByCode.get(e.account!)?.type === "person") continue;
+    for (let j = 0; j < ok.length; j++) {
+      const f = ok[j];
+      if (f === e || !pairable(f)) continue;
+      if (f.account !== e.counterparty || f.currency === e.currency || e.date !== f.date) continue;
+      if (Math.sign(e.amount!) === Math.sign(f.amount!)) continue;
+      if (f.counterparty && f.counterparty !== e.account) continue;
+      if (accByCode.get(f.account!)?.type === "person") continue;
+      if (!exMention(e) && !exMention(f)) continue;
+      const prim = e.currency === "UZS" ? e : f;
+      const sec = prim === e ? f : e;
+      e.pairedWith = f.key; f.pairedWith = e.key; prim.pairPrimary = true; sec.pairPrimary = false;
+      e.counterparty = f.account!; f.counterparty = e.account!;
+      e.type = "transfer"; f.type = "transfer";
+      e.exchange = true; f.exchange = true;
+      e.category = "ayirboshlash"; f.category = "ayirboshlash";
+      break;
+    }
+  }
+
   // ---- balanslar ----
   const balances: Balances = {};
   for (const a of accounts) cell(balances, a.code, a.currency);
@@ -162,10 +190,11 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
       e.balanceAfter = b.value;
       continue;
     }
-    const secondary = !!e.pairedWith && !e.pairPrimary;
+    const secondary = !!e.pairedWith && !e.pairPrimary && !e.exchange;
     if (!secondary) {
       b.value = round2(b.value + e.amount!);
-      if (e.counterparty) {
+      // Ayirboshlashda har tomon o'z valyutasida o'z hisobiga yoziladi — ko'zgu aksi kerak emas
+      if (e.counterparty && !e.exchange) {
         const o = cell(balances, e.counterparty, cur);
         o.value = round2(o.value - e.amount!);
       }

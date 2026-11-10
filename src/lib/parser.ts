@@ -54,7 +54,7 @@ function findAccountLoose(idx: AccountIndex, token: string): Account | undefined
   const t = normCode(token).replace(/\s+/g, " ").trim();
   for (const suf of ["dan", "gacha", "ga", "ge", "da"]) {
     if (t.length > suf.length + 0 && t.endsWith(suf)) {
-      const base = t.slice(0, -suf.length);
+      const base = t.slice(0, -suf.length).trim();
       if (base) {
         const a = idx.byCode.get(base);
         if (a) return a;
@@ -315,6 +315,20 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
       if (cand && cand.id !== acc.id) {
         counterparty = cand.code;
         tail = "";
+      }
+    }
+    // Uzunroq izoh boshida yo'nalishli hint: "C dan dollar qilindi", "Uydan olib kelindi"
+    if (!counterparty) {
+      for (const n of [2, 1]) {
+        if (words.length <= n) continue;
+        const lastw = words[n - 1];
+        if (!/(?:dan|ga|ge|gacha)$/.test(lastw)) continue;
+        const cand = findAccountLoose(ctx.accounts, words.slice(0, n).join(" "));
+        if (cand && cand.id !== acc.id) {
+          counterparty = cand.code;
+          tail = words.slice(n).join(" ");
+          break;
+        }
       }
     }
   }
