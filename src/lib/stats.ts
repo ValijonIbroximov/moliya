@@ -100,8 +100,11 @@ export function sentToAccount(c: Computed, acc: Account): { cur: Currency; value
   const sums = new Map<Currency, number>();
   for (const e of c.ok) {
     if (e.type !== "expense" || e.status !== "ok" || e.disabled) continue;
-    const words = `${e.category || ""} ${e.comment || ""} ${e.tail || ""}`.split(/\s+/).filter(Boolean);
-    if (!words.some(hit)) continue;
+    const own = e.account === acc.code; // "Sirdaryo => 20000" — konvertning o'z chiqimi
+    if (!own) {
+      const words = `${e.category || ""} ${e.comment || ""} ${e.tail || ""}`.split(/\s+/).filter(Boolean);
+      if (!words.some(hit)) continue;
+    }
     sums.set(e.currency!, (sums.get(e.currency!) || 0) + -e.amount!);
   }
   return [...sums.entries()].map(([cur, value]) => ({ cur, value })).sort((a, b) => a.cur.localeCompare(b.cur));

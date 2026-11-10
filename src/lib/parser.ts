@@ -214,6 +214,19 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
 
   if (!acc) return { status: "unknown_account", unknownCode: codeTok, reason: `Noma'lum qisqartma: ${codeTok}` };
 
+  // "X => SUMMA izoh" — jo'natish: minus harakat, lekin shaxs/konvert hisobida ham CHIQIM bo'ladi
+  let sent = false;
+  if (!tm) {
+    const sm = rest.match(/^\s*=>\s*(.*)$/su);
+    if (sm) {
+      sent = true;
+      if (!sm[1].trim()) return { status: "pending", account: acc.code, reason: "Jo'natish summasi yetishmaydi" };
+      const tailStart = text.length - sm[1].length;
+      rest = "-" + sm[1];
+      restToText = (j: number) => tailStart + (j - 1);
+    }
+  }
+
   const om = rest.match(RE_OP);
   if (!om) {
     const r = rest.trim();
@@ -350,6 +363,7 @@ export function parseLine(rawLine: string, ctx: ParseContext): Partial<Entry> {
     account: acc.code,
     counterparty,
     explicit,
+    sent: sent || undefined,
     amount: amountFull,
     currency,
     multiplier,

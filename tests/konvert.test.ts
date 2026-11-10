@@ -35,3 +35,33 @@ describe("konvert (Sirdaryo)", () => {
     expect(e.type).toBe("debt");
   });
 });
+
+describe("konvert: strelka va => oqimi", () => {
+  const raw = "N -> Uy 20000\nSirdaryo = 0\nUy -> Sirdaryo 20000\nSirdaryo => 20000 (ota-onamga jo'natildi)\nSirdaryo = 0";
+  const c = compute([{ id: "n2", raw, note_date: "2026-11-10", unit: 1000, deleted: false, created_at: "", updated_at: "" }], accs, st, "2026-11-10");
+  it("Uy -> Sirdaryo: to'ldirish o'tkazma, qarz emas", () => {
+    const alloc = c.ok.find((e) => e.raw.startsWith("Uy ->"))!;
+    expect(alloc.type).toBe("transfer");
+  });
+  it("Sirdaryo => 20000: chiqim, toifasi sirdaryo, izoh saqlanadi", () => {
+    const send = c.ok.find((e) => e.sent)!;
+    expect(send.type).toBe("expense");
+    expect(send.amount).toBe(-20000000);
+    expect(send.category).toBe("sirdaryo");
+    expect(send.comment).toContain("ota-onamga");
+  });
+  it("balanslar: Uy 0, Sirdaryo 0 (tafovutsiz)", () => {
+    expect(c.balances["Uy"]["UZS"]!.value).toBe(0);
+    expect(c.balances["Sirdaryo"]["UZS"]!.value).toBe(0);
+    expect(c.issues.filter((i) => i.kind === "snapshot_diff").length).toBe(0);
+  });
+  it("flow: chiqim 20 mln, qarz 0, kirim 0", () => {
+    const f = flow(c.ok, { from: "2026-11-01", to: "2026-11-30", label: "11" }, "UZS", accs);
+    expect(f.expense).toBe(20000000);
+    expect(f.debtGiven).toBe(0);
+    expect(f.income).toBe(0);
+  });
+  it("yuborilgan jami 20 mln", () => {
+    expect(sentToAccount(c, accs[2])).toEqual([{ cur: "UZS", value: 20000000 }]);
+  });
+});

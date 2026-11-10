@@ -72,12 +72,31 @@ export function compute(notes: Note[], accounts: Account[], settings: Settings, 
     return !!(a && a.type === "person" && settings.accountPrefs?.[a.id]?.excludeTotal);
   };
   for (const e of ok) {
-    if (e.status !== "ok" || e.amount === undefined || e.amount >= 0) continue;
-    if (!e.counterparty || !isKonvert(e.counterparty) || isKonvert(e.account)) continue;
-    const a = accByCode.get(e.counterparty)!;
-    e.type = "expense";
-    e.counterparty = undefined;
-    e.tail = e.tail ? `${a.code}, ${e.tail}` : a.code;
+    if (e.status !== "ok" || e.amount === undefined) continue;
+    // "Sirdaryo => 20000 (izoh)" — jo'natish: hisob turidan qat'i nazar chiqim, toifasi hisob nomi
+    if (e.sent && e.amount < 0) {
+      e.type = "expense";
+      const t = (e.tail || "").trim().replace(/^\((.*)\)$/s, "$1").trim();
+      e.tail = t ? `${e.account}, ${t}` : `${e.account}, jo'natildi`;
+      continue;
+    }
+    // "Uy -> Sirdaryo 20000" — konvertni to'ldirish: qarz emas, o'tkazma (balans ikkala tomonda)
+    if (e.explicit && e.counterparty && isKonvert(e.counterparty) && !isKonvert(e.account)) {
+      e.type = "transfer";
+      continue;
+    }
+    // Konvert ichidagi oddiy +/- (hintisiz) — qarz statistikasini bulg'amasin: neytral o'tkazma
+    if (isKonvert(e.account) && e.type === "debt" && !e.counterparty) {
+      e.type = "transfer";
+      continue;
+    }
+    // "Uy -20000 sirdaryoga" (strelkasiz hint) — jo'natish: chiqim, konvert balansiga aks yozilmaydi
+    if (e.amount < 0 && e.counterparty && isKonvert(e.counterparty) && !isKonvert(e.account)) {
+      const a = accByCode.get(e.counterparty)!;
+      e.type = "expense";
+      e.counterparty = undefined;
+      e.tail = e.tail ? `${a.code}, ${e.tail}` : a.code;
+    }
   }
 
   for (const e of ok) {

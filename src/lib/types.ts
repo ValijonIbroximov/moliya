@@ -115,6 +115,7 @@ export interface Entry {
   account?: string; // kanonik kod
   counterparty?: string; // o'tkazma ikkinchi tomoni
   explicit?: boolean; // "C -> K 100"
+  sent?: boolean; // "Sirdaryo => 20000" — konvertdan jo'natish, majburiy chiqim
   amount?: number; // hisobga ta'siri (ishorali, to'liq birlikda)
   currency?: Currency;
   multiplier?: number; // qo'llangan birlik (1 yoki 1000 ...)
