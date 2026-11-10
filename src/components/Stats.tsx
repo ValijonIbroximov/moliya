@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Account, Computed, Currency, Issue, MonthPlanItem, Settings } from "@/lib/types";
 import { updateSettings, upsertAccount } from "@/lib/store";
 import { humanDate, monthOf, monthStart, today } from "@/lib/dates";
-import { money, pct, short, signed } from "@/lib/format";
+import { money, num, pct, short, signed } from "@/lib/format";
 import { balancesAt, bucketize, byCategory, dailySeries, debts, flow, monthlySeries, monthSummary, periodFor, previousPeriod, totals } from "@/lib/stats";
 import { buildInsights } from "@/lib/insights";
 import { monthNameUz, monthShortUz } from "@/lib/dates";
@@ -82,6 +82,20 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
 
   return (
     <div className="stack">
+      <div className="card" id="monthplan">
+        <div className="row"><h2>Bu oy</h2><span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+          <button type="button" className="ghost small" onClick={() => setShowReport(true)} title="Batafsil hisobot: oy boshida qancha edi, oylik, taqsimot, kunlik chiqimlar">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-2px", marginRight: 4 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
+            Batafsil hisobot
+          </button>
+          <span className="chip">{short(msum.jami)}</span>
+        </span></div>
+        <p className="hint" style={{ margin: "6px 0 0" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · qoldi {short(msum.qoldi)} · sarflandi {short(msum.sarflandi)}{msum.usdApplied ? " · $ kurs bilan" : msum.hasUsd ? ` · + ${short(msum.usdTotal, "USD")} (kurssiz)` : ""}</p>
+        {plan.length > 0
+          ? <p className="hint" style={{ margin: "4px 0 0" }}>Taqsimlandi {short(planSum)} · sarflash uchun qoldi <b className={planRem >= 0 ? "amt in" : "amt out"}>{short(planRem)}</b>{planRem > 0 ? <> · kuniga ~<b>{short(planDaily)}</b></> : null}</p>
+          : <p className="hint" style={{ margin: "4px 0 0" }}>Taqsimot hali kiritilmagan — hisobot ichidagi ✎ bilan qo'shing.</p>}
+      </div>
+
       <div className="card">
         <div className="row" style={{ flexWrap: "wrap" }}>
           <div>
@@ -213,38 +227,6 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
         </div>
       </div>
 
-      <div className="card" id="monthplan">
-        <div className="row"><h2>Bu oy taqsimoti</h2><span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-          <button type="button" className="iconbtn ghost" style={{ width: 32, height: 32, minHeight: 32 }} onClick={() => setShowReport(true)} aria-label="Oy hisoboti" title="Batafsil hisobot: oy boshida qancha edi, oylik qachon tushdi, nimaga ketdi">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
-          </button>
-          <span className="chip">{short(msum.jami)}</span>
-        </span></div>
-        <p className="hint" style={{ margin: "6px 0 10px" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · hozir qoldi {short(msum.qoldi)}, sarflandi {short(msum.sarflandi)}{msum.usdApplied ? " · $ hisoblar CBU kursi bilan qo'shilgan" : msum.hasUsd ? ` · + ${short(msum.usdTotal, "USD")} (kurs yuklanmadi)` : ""}</p>
-        {plan.map((it) => (
-          <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
-            <input value={it.name} placeholder="Nomi (Sirdaryo, Kvartira…)" onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, name: e.target.value } : x))} style={{ flex: 1, minWidth: 0, fontSize: 13.5, padding: "8px 10px" }} />
-            <input inputMode="decimal" value={it.amount || ""} placeholder="0" onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")) || 0; setPlan(plan.map((x) => x.id === it.id ? { ...x, amount: v } : x)); }} style={{ width: 86, fontSize: 13.5, padding: "8px 8px", textAlign: "right" }} aria-label="Summa" />
-            <select value={it.currency} onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, currency: e.target.value as "UZS" | "USD" } : x))} aria-label="Valyuta" style={{ width: "auto", fontSize: 12.5, padding: "8px 4px" }}>
-              <option value="UZS">ming</option>
-              <option value="USD">$</option>
-            </select>
-            <span className="muted" style={{ fontSize: 11.5, width: 64, textAlign: "right", flexShrink: 0 }}>{it.currency === "USD" ? (usd ? "≈ " + short(it.amount * usd) : "kurs…") : short(it.amount * 1000)}</span>
-            <button type="button" className="ghost small" onClick={() => setPlan(plan.filter((x) => x.id !== it.id))} aria-label="O'chirish" style={{ padding: "4px 8px" }}>✕</button>
-          </div>
-        ))}
-        <button type="button" className="ghost small" style={{ marginTop: 8 }} onClick={() => setPlan([...plan, { id: crypto.randomUUID(), name: "", amount: 0, currency: "UZS" }])}>+ Qator qo'shish</button>
-        {plan.length > 0 && (
-          <div style={{ marginTop: 10, borderTop: "1px solid var(--line)", paddingTop: 8 }}>
-            <p style={{ margin: 0 }}>Taqsimlandi: <b>{short(planSum)}</b>{plan.some((it) => it.currency === "USD") && !usd ? <span className="muted"> · $ qatorlar kurs yuklanmagani uchun hisobga kirmadi</span> : null}</p>
-            <p style={{ margin: "4px 0 0" }}>Sarflash uchun qoldi: <b className={planRem >= 0 ? "amt in" : "amt out"}>{short(planRem)}</b></p>
-            {planRem >= 0
-              ? <p className="hint" style={{ margin: "4px 0 0" }}>Kuniga ~<b>{short(planDaily)}</b> (qoldi ÷ 30) dan oshmasangiz, kelasi oyga yetadi.</p>
-              : <p className="hint" style={{ margin: "4px 0 0" }}>Taqsimot «Bu oy» jamidan oshib ketdi — qatorlarni qayta ko'rib chiqing.</p>}
-          </div>
-        )}
-      </div>
-
       <MonthReport open={showReport} onClose={() => setShowReport(false)} computed={computed} accounts={accounts} settings={settings} usd={usd} />
 
       <div className="card">
@@ -284,8 +266,9 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
 }
 
 
-/** "Bu oy" batafsil hisoboti: oy boshidagi hisoblar, kirimlar, chiqimlar, ayirboshlashlar, hozirgi holat */
+/** "Bu oy" batafsil hisoboti: taqsimot, oy boshidagi hisoblar, kirimlar, kunlik chiqimlar, tejash */
 function MonthReport({ open, onClose, computed, accounts, settings, usd }: { open: boolean; onClose: () => void; computed: Computed; accounts: Account[]; settings: Settings; usd: number | null }) {
+  const [edit, setEdit] = useState(false);
   const t0 = today();
   const start = monthStart(monthOf(t0));
   const m = monthSummary(computed, accounts, t0, settings.accountPrefs, usd);
@@ -298,9 +281,29 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
   const exchanges = monthEntries.filter((e) => e.type === "transfer" && e.exchange && e.pairPrimary);
   const sumBegin = counted.reduce((s2, a) => s2 + (begin[a.code]?.UZS || 0) + (usd ? (begin[a.code]?.USD || 0) * usd : 0), 0);
   const diffBegin = Math.round(m.borEdi - sumBegin);
+
+  // Taqsimot
+  const plan: MonthPlanItem[] = settings.monthPlan || [];
+  const setPlan = (next: MonthPlanItem[]) => updateSettings({ monthPlan: next });
+  const itemUZS = (it: MonthPlanItem) => it.currency === "UZS" ? it.amount * 1000 : usd ? it.amount * usd : 0;
+  const planSum = plan.reduce((t, it) => t + itemUZS(it), 0);
+  const planRem = m.jami - planSum;
+  const planDaily = planRem / 30;
+  const daysPassed = Math.max(1, +t0.slice(8, 10));
+  const avgDaily = m.sarflandi / daysPassed;
+
+  // Kunlik chiqimlar
+  const byDay: { date: string; uzs: number; usd: number; n: number }[] = [];
+  for (const e of expenses) {
+    let r = byDay[byDay.length - 1];
+    if (!r || r.date !== e.date) { r = { date: e.date, uzs: 0, usd: 0, n: 0 }; byDay.push(r); }
+    if (e.currency === "USD") r.usd += -e.amount!; else r.uzs += -e.amount!;
+    r.n++;
+  }
+
   const Row = ({ d, showD, acc, txt, amt, cls }: { d?: string; showD?: boolean; acc?: string; txt?: string; amt: string; cls?: string }) => (
     <div className="reprow">
-      <span className="rd">{d && showD ? dd(d) : ""}</span>
+      {d !== undefined && <span className="rd">{showD ? dd(d) : ""}</span>}
       {acc !== undefined && <span className="racc">{acc}</span>}
       <span className="rtxt">{txt || ""}</span>
       <span className={"ramt " + (cls || "")}>{amt}</span>
@@ -308,8 +311,13 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
   );
   let lastD = "";
   const withD = (d: string) => { const show = d !== lastD; lastD = d; return show; };
+
   return (
-    <Modal open={open} onClose={onClose} title="Bu oy — batafsil hisobot">
+    <Modal open={open} onClose={onClose} title="Bu oy — hisobot" action={
+      <button type="button" className={"iconbtn ghost" + (edit ? " on" : "")} style={{ width: 32, height: 32, minHeight: 32, ...(edit ? { background: "var(--move-bg)", color: "var(--move)" } : {}) }} onClick={() => setEdit((v) => !v)} aria-label="Taqsimotni tahrirlash" title="Taqsimotni tahrirlash">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 3.5l4 4L8 20l-5 1 1-5z"/></svg>
+      </button>
+    }>
       <div className="repstat">
         <div><small>Bor edi</small><b>{short(m.borEdi)}</b></div>
         <div><small>+ Oylik</small><b className="amt in">{short(m.income)}</b></div>
@@ -318,6 +326,47 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
         <div><small>Sarflandi</small><b className="amt out">{short(m.sarflandi)}</b></div>
       </div>
       {m.usdApplied && <p className="hint" style={{ margin: "4px 0 0" }}>$ hisoblar CBU kursi bilan so'mga aylantirib qo'shilgan.</p>}
+
+      <div className="repsec">
+        <h3>Taqsimot <span className={`chip ${planRem >= 0 ? "ok" : "warn"}`}>{plan.length ? short(planSum) : "yo'q"}</span></h3>
+        {!edit && plan.length === 0 && <p className="hint">Taqsimot kiritilmagan — yuqoridagi ✎ bilan qo'shing (Sirdaryo, Kvartira, AI obunalar…).</p>}
+        {!edit && plan.map((it) => (
+          <Row key={it.id} txt={it.name || "…"} amt={it.currency === "USD" ? `${num(it.amount)} $${usd ? " ≈ " + short(it.amount * usd) : ""}` : short(it.amount * 1000)} />
+        ))}
+        {edit && <>
+          {plan.map((it) => (
+            <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
+              <input value={it.name} placeholder="Nomi (Sirdaryo, Kvartira…)" onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, name: e.target.value } : x))} style={{ flex: 1, minWidth: 0, fontSize: 13.5, padding: "8px 10px" }} />
+              <input inputMode="decimal" value={it.amount || ""} placeholder="0" onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")) || 0; setPlan(plan.map((x) => x.id === it.id ? { ...x, amount: v } : x)); }} style={{ width: 84, fontSize: 13.5, padding: "8px 8px", textAlign: "right" }} aria-label="Summa" />
+              <select value={it.currency} onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, currency: e.target.value as "UZS" | "USD" } : x))} aria-label="Valyuta" style={{ width: "auto", fontSize: 12.5, padding: "8px 4px" }}>
+                <option value="UZS">ming</option>
+                <option value="USD">$</option>
+              </select>
+              <button type="button" className="ghost small" onClick={() => setPlan(plan.filter((x) => x.id !== it.id))} aria-label="O'chirish" style={{ padding: "4px 8px" }}>✕</button>
+            </div>
+          ))}
+          <button type="button" className="ghost small" style={{ marginTop: 8 }} onClick={() => setPlan([...plan, { id: crypto.randomUUID(), name: "", amount: 0, currency: "UZS" }])}>+ Qator qo'shish</button>
+          {plan.some((it) => it.currency === "USD") && !usd && <p className="hint" style={{ margin: "6px 0 0" }}>$ qatorlar kurs yuklanmagani uchun jamiga kirmadi.</p>}
+        </>}
+        {plan.length > 0 && <div className="repsum"><span>Sarflash uchun qoldi</span><b className={planRem >= 0 ? "amt in" : "amt out"}>{short(planRem)}</b></div>}
+        {plan.length > 0 && planRem >= 0 && (
+          <div style={{ marginTop: 6 }}>
+            <Row txt="Kunlik maksimal (qoldi ÷ 30)" amt={short(planDaily)} />
+            <Row txt={`Shu oy o'rtacha kunlik sarf (${daysPassed} kun)`} amt={short(avgDaily)} cls={avgDaily <= planDaily ? "amt in" : "amt out"} />
+          </div>
+        )}
+        {plan.length > 0 && planRem < 0 && (
+          <p className="hint" style={{ margin: "6px 0 0" }}>⚠️ Sarflash uchun qoldi hozircha minusda. Oylikning qolgan qismi (masalan, naqd 2-qism) hali tushmagan bo'lsa, u kirishi bilan «Jami» oshadi va bu minus o'z-o'zidan yopiladi — taqsimotni o'zgartirish shart emas.</p>
+        )}
+        {plan.length > 0 && planRem > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <p className="hint" style={{ margin: "0 0 2px" }}>💡 Tejash: kuniga kamroq sarflasangiz, keyingi oylikkacha ortib qoladi:</p>
+            {[0.1, 0.25, 0.5].map((pr) => (
+              <Row key={pr} txt={`Kuniga ~${short(planDaily * (1 - pr))} bilan (−${Math.round(pr * 100)}%)`} amt={"+" + short(planRem * pr)} cls="amt in" />
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="repsec">
         <h3>Oy boshida hisoblarda <span className="chip">{dd(start)}</span></h3>
@@ -344,9 +393,9 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
       )}
 
       <div className="repsec">
-        <h3>Chiqimlar <span className="chip warn">{short(m.sarflandi)} · {expenses.length} ta</span></h3>
-        {(lastD = "") || expenses.slice(0, 120).map((e) => <Row key={e.key} d={e.date} showD={withD(e.date)} acc={e.account} txt={(e.category || "") + (e.comment ? ` · ${e.comment}` : "")} amt={short(e.amount!, e.currency)} cls="amt out" />)}
-        {expenses.length > 120 && <p className="hint">… yana {expenses.length - 120} ta satr — Tarixda to'liq.</p>}
+        <h3>Kunlik chiqimlar <span className="chip warn">{short(m.sarflandi)} · {expenses.length} ta</span></h3>
+        {byDay.length === 0 && <p className="hint">Bu oy chiqim yozilmagan.</p>}
+        {byDay.map((r) => <Row key={r.date} d={r.date} showD acc={`${r.n} ta`} txt="" amt={[r.uzs ? "−" + short(r.uzs) : "", r.usd ? "−" + short(r.usd, "USD") : ""].filter(Boolean).join(" | ")} cls="amt out" />)}
       </div>
 
       <div className="repsec">

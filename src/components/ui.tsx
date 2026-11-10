@@ -89,7 +89,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 // ---- dialog ----
-export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Modal({ open, onClose, title, action, children }: { open: boolean; onClose: () => void; title: string; action?: ReactNode; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -101,7 +101,10 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
     <dialog ref={ref} onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}>
       <div className="row" style={{ marginBottom: 12 }}>
         <h2>{title}</h2>
-        <button type="button" className="ghost" onClick={onClose} aria-label="Yopish" style={{ fontSize: 20 }}>×</button>
+        <span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+          {action}
+          <button type="button" className="ghost" onClick={onClose} aria-label="Yopish" style={{ fontSize: 20 }}>×</button>
+        </span>
       </div>
       {open && children}
     </dialog>
