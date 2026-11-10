@@ -110,6 +110,25 @@ export function sentToAccount(c: Computed, acc: Account): { cur: Currency; value
   return [...sums.entries()].map(([cur, value]) => ({ cur, value })).sort((a, b) => a.cur.localeCompare(b.cur));
 }
 
+/** Berilgan sanagacha (shu sana KIRMAYDI) balanslarni qayta o'ynatish — "oy boshida qancha edi" uchun.
+ * compute() balans qoidalarining soddalashtirilgan aksi: snapshot qiymatni o'rnatadi, juftlikning
+ * ikkilamchi tomoni tashlanadi (ayirboshlashdan tashqari), hint/strelka aksi qarama-qarshi hisobga. */
+export function balancesAt(c: Computed, before: string): Record<string, Partial<Record<Currency, number>>> {
+  const out: Record<string, Partial<Record<Currency, number>>> = {};
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  const get = (code: string, cur: Currency) => (out[code] ||= {})[cur] || 0;
+  const set = (code: string, cur: Currency, v: number) => { (out[code] ||= {})[cur] = r2(v); };
+  for (const e of c.ok) {
+    if (e.date >= before || e.status !== "ok" || e.type === "total" || e.amount === undefined) continue;
+    const cur = e.currency!;
+    if (e.type === "snapshot") { set(e.account!, cur, e.amount); continue; }
+    if (e.pairedWith && !e.pairPrimary && !e.exchange) continue;
+    set(e.account!, cur, get(e.account!, cur) + e.amount);
+    if (e.counterparty && !e.exchange) set(e.counterparty, cur, get(e.counterparty, cur) - e.amount);
+  }
+  return out;
+}
+
 /** "Bu oy" xulosasi: bor edi + oylik(kirim) = jami; qoldi = hozirgi tasdiqlangan pul; sarflandi = chiqimlar */
 export function monthSummary(c: Computed, accounts: Account[], todayStr: string, prefs?: Record<string, { excludeTotal?: boolean } | undefined>, usdRate?: number | null) {
   const ym = monthOf(todayStr);

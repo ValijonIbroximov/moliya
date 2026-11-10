@@ -2,13 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Account, Computed, Currency, Issue, MonthPlanItem, Settings } from "@/lib/types";
 import { updateSettings, upsertAccount } from "@/lib/store";
-import { humanDate, today } from "@/lib/dates";
+import { humanDate, monthOf, monthStart, today } from "@/lib/dates";
 import { money, pct, short, signed } from "@/lib/format";
-import { bucketize, byCategory, dailySeries, debts, flow, monthlySeries, monthSummary, periodFor, previousPeriod, totals } from "@/lib/stats";
+import { balancesAt, bucketize, byCategory, dailySeries, debts, flow, monthlySeries, monthSummary, periodFor, previousPeriod, totals } from "@/lib/stats";
 import { buildInsights } from "@/lib/insights";
 import { monthNameUz, monthShortUz } from "@/lib/dates";
 import { Donut, GroupedBars } from "./charts";
-import { Badge, useToast } from "./ui";
+import { Badge, useToast, Modal } from "./ui";
 
 interface Props {
   computed: Computed;
@@ -54,6 +54,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
   const planSum = plan.reduce((t, it) => t + itemUZS(it), 0);
   const planRem = msum.jami - planSum;
   const planDaily = planRem / 30;
+  const [showReport, setShowReport] = useState(false);
   const diffs = computed.issues.filter((i) => (i.kind === "snapshot_diff" || i.kind === "expected_mismatch") && i.currency === cur);
   const insights = useMemo(() => buildInsights(computed, accounts, settings, todayStr), [computed, accounts, settings, todayStr]);
   const review = computed.issues.filter((i) => i.kind !== "snapshot_diff" && i.kind !== "expected_mismatch");
@@ -208,7 +209,12 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
       </div>
 
       <div className="card" id="monthplan">
-        <div className="row"><h2>Bu oy taqsimoti</h2><span className="chip">{short(msum.jami)}</span></div>
+        <div className="row"><h2>Bu oy taqsimoti</h2><span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+          <button type="button" className="iconbtn ghost" style={{ width: 32, height: 32, minHeight: 32 }} onClick={() => setShowReport(true)} aria-label="Oy hisoboti" title="Batafsil hisobot: oy boshida qancha edi, oylik qachon tushdi, nimaga ketdi">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
+          </button>
+          <span className="chip">{short(msum.jami)}</span>
+        </span></div>
         <p className="hint" style={{ margin: "6px 0 10px" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · hozir qoldi {short(msum.qoldi)}, sarflandi {short(msum.sarflandi)}{msum.usdApplied ? " · $ hisoblar CBU kursi bilan qo'shilgan" : msum.hasUsd ? ` · + ${short(msum.usdTotal, "USD")} (kurs yuklanmadi)` : ""}</p>
         {plan.map((it) => (
           <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
@@ -233,6 +239,8 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
           </div>
         )}
       </div>
+
+      <MonthReport open={showReport} onClose={() => setShowReport(false)} computed={computed} accounts={accounts} settings={settings} usd={usd} />
 
       <div className="card">
         <div className="row"><h2>Tekshirish kerak</h2><span className={`chip ${review.length ? "warn" : "ok"}`}>{review.length} ta</span></div>
@@ -265,5 +273,57 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
         })}
       </div>
     </div>
+  );
+}
+
+
+/** "Bu oy" batafsil hisoboti: oy boshidagi hisoblar, kirimlar, chiqimlar, ayirboshlashlar, hozirgi holat */
+function MonthReport({ open, onClose, computed, accounts, settings, usd }: { open: boolean; onClose: () => void; computed: Computed; accounts: Account[]; settings: Settings; usd: number | null }) {
+  const t0 = today();
+  const start = monthStart(monthOf(t0));
+  const m = monthSummary(computed, accounts, t0, settings.accountPrefs, usd);
+  const begin = balancesAt(computed, start);
+  const counted = accounts.filter((a) => !a.archived && a.type !== "report" && a.type !== "person" && !settings.accountPrefs?.[a.id]?.excludeTotal).sort((a, b) => a.sort - b.sort);
+  const dd = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
+  const monthEntries = computed.ok.filter((e) => e.status === "ok" && !e.disabled && e.date >= start && e.date <= t0 && e.currency);
+  const incomes = monthEntries.filter((e) => e.type === "income");
+  const expenses = monthEntries.filter((e) => e.type === "expense");
+  const exchanges = monthEntries.filter((e) => e.type === "transfer" && e.exchange && e.pairPrimary);
+  const sumBegin = counted.reduce((s2, a) => s2 + (begin[a.code]?.UZS || 0) + (usd ? (begin[a.code]?.USD || 0) * usd : 0), 0);
+  const diffBegin = Math.round(m.borEdi - sumBegin);
+  return (
+    <Modal open={open} onClose={onClose} title="Bu oy — batafsil hisobot">
+      <p className="hint" style={{ marginTop: 0 }}>Bor edi {short(m.borEdi)} + oylik {short(m.income)} = <b>{short(m.jami)}</b> · qoldi {short(m.qoldi)} · sarflandi {short(m.sarflandi)}{m.usdApplied ? " · $ CBU kursi bilan" : ""}</p>
+
+      <h3 style={{ margin: "12px 0 4px" }}>Oy boshida ({dd(start)}) hisoblarda</h3>
+      {counted.map((a) => {
+        const u = begin[a.code]?.UZS || 0, d = begin[a.code]?.USD || 0;
+        if (!u && !d) return null;
+        return <p key={a.id} className="mono" style={{ margin: "2px 0" }}>{a.code} — {money(u)}{d ? ` | ${money(d, "USD")}` : ""}</p>;
+      })}
+      <p className="mono" style={{ margin: "4px 0" }}><b>Jami: {short(sumBegin)}</b>{Math.abs(diffBegin) > 1000 ? <span className="muted"> · formula bilan farq {short(diffBegin)} (qarz/tafovut/konvert harakatlari hisobiga)</span> : null}</p>
+
+      <h3 style={{ margin: "12px 0 4px" }}>Kirimlar · {short(m.income)}</h3>
+      {incomes.length === 0 && <p className="hint">Bu oy kirim yozilmagan.</p>}
+      {incomes.map((e) => <p key={e.key} className="mono" style={{ margin: "2px 0" }}>{dd(e.date)} · {e.account} <b className="amt in">+{short(e.amount!, e.currency)}</b>{e.tail ? ` — ${e.tail}` : ""}</p>)}
+
+      {exchanges.length > 0 && <>
+        <h3 style={{ margin: "12px 0 4px" }}>Ayirboshlash</h3>
+        {exchanges.map((e) => <p key={e.key} className="mono" style={{ margin: "2px 0" }}>{dd(e.date)} · {e.account} {short(e.amount!)} → {e.counterparty}</p>)}
+      </>}
+
+      <h3 style={{ margin: "12px 0 4px" }}>Chiqimlar · {short(m.sarflandi)}</h3>
+      {expenses.slice(0, 120).map((e) => <p key={e.key} className="mono" style={{ margin: "2px 0" }}>{dd(e.date)} · {e.account} <b className="amt out">{short(e.amount!, e.currency)}</b>{e.category ? ` — ${e.category}` : ""}{e.comment ? ` (${e.comment})` : ""}</p>)}
+      {expenses.length > 120 && <p className="hint">… yana {expenses.length - 120} ta satr — Tarixda to'liq.</p>}
+
+      <h3 style={{ margin: "12px 0 4px" }}>Hozir hisoblarda</h3>
+      {counted.map((a) => {
+        const row = computed.balances[a.code] || {};
+        const cells = Object.entries(row).filter(([, b]) => b && (b.known || b.value !== 0));
+        if (!cells.length) return null;
+        return <p key={a.id} className="mono" style={{ margin: "2px 0" }}>{a.code} — {cells.map(([cur, b]) => money(b!.value, cur as Currency) + (b!.known ? "" : " ·?")).join(" | ")}</p>;
+      })}
+      <p className="mono" style={{ margin: "4px 0" }}><b>Qoldi: {short(m.qoldi)}</b></p>
+    </Modal>
   );
 }
