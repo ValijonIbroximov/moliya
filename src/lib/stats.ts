@@ -85,14 +85,23 @@ export function flow(ok: Entry[], p: Period, cur: Currency, accounts: Account[])
 }
 
 /** "Bu oy" xulosasi: bor edi + oylik(kirim) = jami; qoldi = hozirgi tasdiqlangan pul; sarflandi = chiqimlar */
-export function monthSummary(c: Computed, accounts: Account[], todayStr: string, prefs?: Record<string, { excludeTotal?: boolean } | undefined>) {
+export function monthSummary(c: Computed, accounts: Account[], todayStr: string, prefs?: Record<string, { excludeTotal?: boolean } | undefined>, usdRate?: number | null) {
   const ym = monthOf(todayStr);
   const p: Period = { from: monthStart(ym), to: monthEnd(ym), label: ym };
   const f = flow(c.ok, p, "UZS", accounts);
   const t = totals(c, accounts, "UZS", prefs);
-  const qoldi = t.total;
-  const borEdi = qoldi + f.expense - f.income; // jami = borEdi + kirim = qoldi + sarflandi
-  return { borEdi, income: f.income, jami: borEdi + f.income, qoldi, sarflandi: f.expense, known: t.known };
+  const fu = flow(c.ok, p, "USD", accounts);
+  const tu = totals(c, accounts, "USD", prefs);
+  let qoldi = t.total, income = f.income, sarflandi = f.expense;
+  const usdTotal = tu.total, hasUsd = !!(tu.total || fu.income || fu.expense);
+  const usdApplied = hasUsd && !!usdRate;
+  if (usdApplied && usdRate) {
+    qoldi += tu.total * usdRate;
+    income += fu.income * usdRate;
+    sarflandi += fu.expense * usdRate;
+  }
+  const borEdi = qoldi + sarflandi - income; // jami = borEdi + kirim = qoldi + sarflandi
+  return { borEdi, income, jami: borEdi + income, qoldi, sarflandi, known: t.known, hasUsd, usdApplied, usdTotal };
 }
 
 export interface CatRow { category: string; amount: number; count: number; share: number }

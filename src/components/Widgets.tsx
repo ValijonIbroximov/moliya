@@ -26,7 +26,7 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
   const todayStr = today();
   const [rate, setRate] = useState(rateCache);
   useEffect(() => {
-    if (!enabled.includes("rate") || rateCache !== undefined) return;
+    if (!(enabled.includes("rate") || enabled.includes("month")) || rateCache !== undefined) return;
     fetch("/api/rates").then((r) => r.json()).then((j) => {
       const u = j?.rates?.find((x: { ccy: string }) => x.ccy === "USD");
       rateCache = u ? { rate: u.rate, diff: u.diff, date: u.date } : null;
@@ -60,12 +60,12 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
     )});
 
   if (enabled.includes("month")) {
-    const m = monthSummary(computed, accounts, todayStr, settings.accountPrefs);
+    const m = monthSummary(computed, accounts, todayStr, settings.accountPrefs, rate?.rate);
     items.push({ id: "month", el: (
       <button type="button" className="wtile wide" onClick={() => onGo("stats", "monthplan")}>
         <small>Bu oy · {short(m.borEdi)} + {short(m.income)} oylik</small>
-        <b>= {short(m.jami)}{m.known ? "" : " ·?"}</b>
-        <small><span className="amt in">Qoldi {short(m.qoldi)}</span> · <span className="amt out">Sarf {short(m.sarflandi)}</span></small>
+        <b>= {short(m.jami)}{m.hasUsd && !m.usdApplied ? " + " + short(m.usdTotal, "USD") : ""}{m.known ? "" : " ·?"}</b>
+        <small><span className="amt in">Qoldi {short(m.qoldi)}</span> · <span className="amt out">Sarf {short(m.sarflandi)}</span>{m.usdApplied ? " · $ kurs bilan" : ""}</small>
       </button>
     )});
   }

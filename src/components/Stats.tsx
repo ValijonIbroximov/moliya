@@ -40,8 +40,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
   const months = monthlySeries(computed.ok, cur, todayStr, 6);
   const t = totals(computed, accounts, cur, settings.accountPrefs);
   const ds = debts(computed, accounts, settings.accountPrefs);
-  const msum = monthSummary(computed, accounts, today(), settings.accountPrefs);
-  const plan: MonthPlanItem[] = settings.monthPlan || [];
+    const plan: MonthPlanItem[] = settings.monthPlan || [];
   const [usd, setUsd] = useState<number | null>(null);
   useEffect(() => {
     fetch("/api/rates").then((r) => r.json()).then((j) => {
@@ -49,6 +48,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
       setUsd(u ? u.rate : null);
     }).catch(() => setUsd(null));
   }, []);
+  const msum = monthSummary(computed, accounts, today(), settings.accountPrefs, usd);
   function setPlan(next: MonthPlanItem[]) { updateSettings({ monthPlan: next }); }
   const itemUZS = (it: MonthPlanItem) => it.currency === "UZS" ? it.amount * 1000 : usd ? it.amount * usd : 0;
   const planSum = plan.reduce((t, it) => t + itemUZS(it), 0);
@@ -209,7 +209,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
 
       <div className="card" id="monthplan">
         <div className="row"><h2>Bu oy taqsimoti</h2><span className="chip">{short(msum.jami)}</span></div>
-        <p className="hint" style={{ margin: "6px 0 10px" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · hozir qoldi {short(msum.qoldi)}, sarflandi {short(msum.sarflandi)}</p>
+        <p className="hint" style={{ margin: "6px 0 10px" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · hozir qoldi {short(msum.qoldi)}, sarflandi {short(msum.sarflandi)}{msum.usdApplied ? " · $ hisoblar CBU kursi bilan qo'shilgan" : msum.hasUsd ? ` · + ${short(msum.usdTotal, "USD")} (kurs yuklanmadi)` : ""}</p>
         {plan.map((it) => (
           <div key={it.id} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
             <input value={it.name} placeholder="Nomi (Sirdaryo, Kvartira…)" onChange={(e) => setPlan(plan.map((x) => x.id === it.id ? { ...x, name: e.target.value } : x))} style={{ flex: 1, minWidth: 0, fontSize: 13.5, padding: "8px 10px" }} />
