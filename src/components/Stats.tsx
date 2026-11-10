@@ -57,7 +57,12 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
   const [showReport, setShowReport] = useState(false);
   const diffs = computed.issues.filter((i) => (i.kind === "snapshot_diff" || i.kind === "expected_mismatch") && i.currency === cur);
   const insights = useMemo(() => buildInsights(computed, accounts, settings, todayStr), [computed, accounts, settings, todayStr]);
-  const review = computed.issues.filter((i) => i.kind !== "snapshot_diff" && i.kind !== "expected_mismatch");
+  const issueSig = (i: Issue) => `${i.kind}:${i.entry.sig || i.entry.raw.trim() + "@" + i.entry.date}`;
+  const dismissed = new Set(settings.dismissedIssues || []);
+  const reviewAll = computed.issues.filter((i) => i.kind !== "snapshot_diff" && i.kind !== "expected_mismatch");
+  const review = reviewAll.filter((i) => !dismissed.has(issueSig(i)));
+  const dismissedCount = reviewAll.length - review.length;
+  const dismissIssue = (i: Issue) => updateSettings({ dismissedIssues: [...new Set([...(settings.dismissedIssues || []), issueSig(i)])] });
   const activeDays = daily.filter((d) => d.expense > 0 || d.income > 0).length;
 
   const delta = (a: number, b: number) => (b ? ((a - b) / b) * 100 : null);
@@ -245,6 +250,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
       <div className="card">
         <div className="row"><h2>Tekshirish kerak</h2><span className={`chip ${review.length ? "warn" : "ok"}`}>{review.length} ta</span></div>
         {review.length === 0 && <p className="hint">Chala satrlar, noma'lum hisoblar, ehtimoliy juftliklar va «?» belgili yozuvlar shu yerda ko'rinadi. Hozir hammasi tartibda.</p>}
+        {dismissedCount > 0 && <p className="hint" style={{ margin: "4px 0 0" }}>{dismissedCount} ta e'tiborsiz qoldirilgan · <button type="button" className="ghost small" style={{ padding: "2px 8px" }} onClick={() => updateSettings({ dismissedIssues: [] })}>tiklash</button></p>}
         {review.slice(0, 40).map((i) => {
           const e = i.entry;
           return (
@@ -266,6 +272,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
                     </>
                   ) : null}
                   <button type="button" className="small" onClick={() => onOpen(e.noteId, e.line)}>Yozuvni ochish</button>
+                  {i.kind !== "possible_pair" && <button type="button" className="small ghost" onClick={() => { dismissIssue(i); toast("E'tiborsiz qoldirildi"); }} title="Bu ogohlantirish boshqa ko'rsatilmaydi (yozuv o'zgarmaydi)">E'tiborsiz qoldirish</button>}
                 </div>
               </div>
             </div>

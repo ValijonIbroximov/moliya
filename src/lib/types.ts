@@ -67,6 +67,7 @@ export interface Settings {
   defaultUnit?: 1 | 1000; // yangi yozuvlar birligi: 1 = 1 000 so'm (odatiy) yoki 1 = 1 so'm
   accountPrefs?: Record<string, AccountPref>; // hisob id -> ko'rinish/jami sozlamalari
   monthPlan?: MonthPlanItem[]; // "Bu oy" taqsimoti (Tahlil)
+  dismissedIssues?: string[]; // "Tekshirish kerak" da e'tiborsiz qoldirilganlar
   widgets?: string[]; // Yozuv ekranidagi vidjetlar
   autoAi?: boolean; // ochilganda kuniga bir marta avtomatik tahlil
   plans?: Plan[];
