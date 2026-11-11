@@ -157,20 +157,15 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
   }
 
   const noteDate = note?.note_date || todayStr;
-  // Tez-tez takrorlanadigan xarajatlar (hisob+summa+toifa kamida 3 marta) — bir bosishda satr
-  const quickLines = useMemo(() => {
-    const m = new Map<string, { acc: string; amount: number; cat: string; cur: string; count: number }>();
+  // Tez-tez ishlatiladigan toifa so'zlari (kamida 3 marta) — hisob va summani foydalanuvchi o'zi yozadi
+  const quickWords = useMemo(() => {
+    const m = new Map<string, number>();
     for (const e of computed.ok) {
-      if (e.type !== "expense" || !e.category || e.pairedWith) continue;
-      const k = `${e.account}|${e.amount}|${e.category}|${e.currency}`;
-      const r = m.get(k) || { acc: e.account!, amount: e.amount!, cat: e.category, cur: e.currency!, count: 0 };
-      r.count++; m.set(k, r);
+      if (!e.category || e.pairedWith || e.type === "snapshot" || e.type === "total") continue;
+      if (["qarz", "ayirboshlash", "o'tkazma", "jami"].includes(e.category)) continue;
+      m.set(e.category, (m.get(e.category) || 0) + 1);
     }
-    return [...m.values()].filter((r) => r.count >= 3).sort((a, b) => b.count - a.count).slice(0, 6).map((r) => {
-      const a = Math.abs(r.amount);
-      const v = r.cur === "UZS" ? (noteUnitRef.current === 1000 ? String(Math.round((a / 1000) * 1000) / 1000) : String(a) + " so'm") : String(a) + "$";
-      return { line: `${r.acc} -${v} ${r.cat}`, count: r.count };
-    });
+    return [...m.entries()].filter(([, c]) => c >= 3).sort((a, b) => b[1] - a[1]).slice(0, 8);
   }, [computed]);
   // Katta yozuvlarda (ko'p kunlik Keep matni) faqat kursor atrofidagi satrlar ko'rsatiladi — telefonda sekinlashmasin
   const WINDOW = 40;
@@ -245,15 +240,16 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
         onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
       />
 
-      {quickLines.length > 0 && (
-        <div className="sugg" style={{ marginTop: 6 }} aria-label="Tez-tez ishlatiladigan">
+      {quickWords.length > 0 && (
+        <div className="sugg" style={{ marginTop: 6 }} aria-label="Tez-tez ishlatiladigan so'zlar">
           <small style={{ alignSelf: "center" }}>Tez-tez:</small>
-          {quickLines.map((q) => (
-            <button key={q.line} type="button" title={`${q.count} marta ishlatilgan`} onClick={() => {
-              const cur = (lines[curLine] || "").trim();
-              if (!cur) { const r = replaceLine(raw || "", curLine, q.line); setRaw(r.text, r.caret, false); }
-              else { const base = (raw || "").replace(/\s+$/, ""); const nr = base + "\n" + q.line; setRaw(nr, nr.length, false); }
-            }}>{q.line} <span className="muted">×{q.count}</span></button>
+          {quickWords.map(([w, c]) => (
+            <button key={w} type="button" title={`${c} marta ishlatilgan — joriy satr oxiriga qo'shiladi`} onClick={() => {
+              const cur = lines[curLine] || "";
+              const nl = cur + (cur && !/\s$/.test(cur) ? " " : "") + w;
+              const r = replaceLine(raw || "", curLine, nl);
+              setRaw(r.text, r.caret, false);
+            }}>{w} <span className="muted">×{c}</span></button>
           ))}
         </div>
       )}

@@ -55,7 +55,7 @@ export default function Widgets({ computed, accounts, settings, onGo }: { comput
       <button type="button" className="wtile" onClick={() => onGo("stats", "flowchart")}>
         <small>Bugun</small>
         <b><span className="amt in">+{short(fToday.income)}</span> <span className="amt out">−{short(fToday.expense)}</span></b>
-        <small className="muted">{fToday.count} ta yozuv</small>
+        <small className="muted">{fToday.count} ta{fToday.income || fToday.expense ? <> · <span className={fToday.income - fToday.expense >= 0 ? "amt in" : "amt out"}>{fToday.income - fToday.expense >= 0 ? "+" : "−"}{short(Math.abs(fToday.income - fToday.expense))} {fToday.income - fToday.expense >= 0 ? "foyda" : "zarar"}</span></> : " yozuv"}</small>
       </button>
     )});
 
