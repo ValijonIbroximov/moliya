@@ -90,7 +90,7 @@ export default function Stats({ computed, accounts, settings, onOpen, onGo, onAd
           </button>
           <span className="chip">{short(msum.jami)}</span>
         </span></div>
-        <p className="hint" style={{ margin: "6px 0 0" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.income)} = <b>{short(msum.jami)}</b> · qoldi {short(msum.qoldi)} · sarflandi {short(msum.sarflandi)}{msum.usdApplied ? " · $ kurs bilan" : msum.hasUsd ? ` · + ${short(msum.usdTotal, "USD")} (kurssiz)` : ""}</p>
+        <p className="hint" style={{ margin: "6px 0 0" }}>Bor edi {short(msum.borEdi)} + oylik {short(msum.oylik)}{msum.boshqa > 0 ? ` + boshqa ${short(msum.boshqa)}` : ""} = <b>{short(msum.jami)}</b> · qoldi {short(msum.qoldi)} · sarflandi {short(msum.sarflandi)}{msum.usdApplied ? " · $ kurs bilan" : msum.hasUsd ? ` · + ${short(msum.usdTotal, "USD")} (kurssiz)` : ""}</p>
         {plan.length > 0
           ? <p className="hint" style={{ margin: "4px 0 0" }}>Taqsimlandi {short(planSum)} · sarflash uchun qoldi <b className={planRem >= 0 ? "amt in" : "amt out"}>{short(planRem)}</b>{planRem > 0 ? <> · kuniga ~<b>{short(planDaily)}</b></> : null}</p>
           : <p className="hint" style={{ margin: "4px 0 0" }}>Taqsimot hali kiritilmagan — hisobot ichidagi ✎ bilan qo'shing.</p>}
@@ -320,7 +320,8 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
     }>
       <div className="repstat">
         <div><small>Bor edi</small><b>{short(m.borEdi)}</b></div>
-        <div><small>+ Oylik</small><b className="amt in">{short(m.income)}</b></div>
+        <div><small>+ Oylik</small><b className="amt in">{short(m.oylik)}</b></div>
+        {m.boshqa > 0 && <div><small>+ Boshqa kirim</small><b>{short(m.boshqa)}</b></div>}
         <div><small>= Jami</small><b>{short(m.jami)}</b></div>
         <div><small>Qoldi</small><b className="amt in">{short(m.qoldi)}</b></div>
         <div><small>Sarflandi</small><b className="amt out">{short(m.sarflandi)}</b></div>
@@ -380,7 +381,7 @@ function MonthReport({ open, onClose, computed, accounts, settings, usd }: { ope
       </div>
 
       <div className="repsec">
-        <h3>Kirimlar <span className="chip ok">{short(m.income)} · {incomes.length} ta</span></h3>
+        <h3>Kirimlar <span className="chip ok">oylik {short(m.oylik)}{m.boshqa > 0 ? ` + ${short(m.boshqa)}` : ""} · {incomes.length} ta</span></h3>
         {incomes.length === 0 && <p className="hint">Bu oy kirim yozilmagan.</p>}
         {(lastD = "") || incomes.map((e) => <Row key={e.key} d={e.date} showD={withD(e.date)} acc={e.account} txt={e.tail || ""} amt={"+" + short(e.amount!, e.currency)} cls="amt in" />)}
       </div>

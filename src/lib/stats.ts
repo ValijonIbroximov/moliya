@@ -145,8 +145,18 @@ export function monthSummary(c: Computed, accounts: Account[], todayStr: string,
     income += fu.income * usdRate;
     sarflandi += fu.expense * usdRate;
   }
-  const borEdi = qoldi + sarflandi - income; // jami = borEdi + kirim = qoldi + sarflandi
-  return { borEdi, income, jami: borEdi + income, qoldi, sarflandi, known: t.known, hasUsd, usdApplied, usdTotal };
+  // Ish haqi sifatida faqat oylik/premya/safar (va yaqin so'zlar) sanaladi; qolgani "boshqa kirim"
+  let oylik = 0;
+  for (const e of c.ok) {
+    if (e.status !== "ok" || e.disabled || e.type !== "income" || !e.amount) continue;
+    if (e.date < p.from || e.date > p.to) continue;
+    const txt = `${e.category || ""} ${e.comment || ""} ${e.tail || ""}`.toLowerCase();
+    if (!/(oylik|premya|premiya|safar|avans|ish haqi)/.test(txt)) continue;
+    if (e.currency === "USD") { if (usdApplied && usdRate) oylik += e.amount * usdRate; }
+    else oylik += e.amount;
+  }
+  const borEdi = qoldi + sarflandi - income; // jami = borEdi + barcha kirim = qoldi + sarflandi
+  return { borEdi, income, oylik, boshqa: Math.max(0, income - oylik), jami: borEdi + income, qoldi, sarflandi, known: t.known, hasUsd, usdApplied, usdTotal };
 }
 
 export interface CatRow { category: string; amount: number; count: number; share: number }
