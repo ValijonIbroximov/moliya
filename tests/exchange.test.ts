@@ -41,7 +41,7 @@ describe("valyuta ayirboshlash", () => {
 });
 
 describe("oylik faqat ish haqi so'zlari bilan", () => {
-  const raw = "C +10000 Oylik\nC = 10000\nC +1500 premya\nC +1012 safar\nN +50 tasodifiy kirim\nN = 50";
+  const raw = "C +10000 Oylik\nC = 10000\nC +1500 premya\nC +1012 safar\nK +50 tasodifiy kirim\nK = 50";
   const note2: Note = { id: "n3", raw, note_date: "2026-11-05", unit: 1000, deleted: false, created_at: "", updated_at: "" };
   const c = compute([note2], accs, { confirmedPairs: [], rejectedPairs: [], updated_at: "" } as unknown as Settings, "2026-11-10");
   it("oylik = 12,512 mln; boshqa = 50 ming", () => {
