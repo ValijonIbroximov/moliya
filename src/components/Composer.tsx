@@ -336,6 +336,7 @@ export default function Composer({ computed, accounts, note, onAddAccount, focus
 
 function SaveStatus() {
   const app = useApp();
+  const toast = useToast();
   const t = app.lastSync ? new Date(app.lastSync).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tashkent" }) : "";
   const map: Record<string, string> = {
     idle: "Tayyor",
@@ -346,5 +347,17 @@ function SaveStatus() {
     error: "Bulutga saqlanmadi — qurilmada turibdi",
     guest: "Mehmon · faqat shu qurilmada saqlanadi",
   };
-  return <span className={`status ${app.saveStatus}`} role="status" title={app.saveError || ""}><i />{map[app.saveStatus]}</span>;
+  let detail = app.saveError || "";
+  if (/disabled/i.test(detail) && /column|schema/i.test(detail)) {
+    detail += " — Yechim: Supabase → SQL Editor → \"alter table public.moliya_notes add column if not exists disabled boolean not null default false;\" ni ishga tushiring, so'ng sahifani yangilang.";
+  }
+  return (
+    <span
+      className={`status ${app.saveStatus}`}
+      role="status"
+      title={detail}
+      onClick={() => { if (detail && (app.saveStatus === "error" || app.saveStatus === "offline")) toast(detail, { label: "OK", fn: () => {} }); }}
+      style={app.saveStatus === "error" ? { cursor: "pointer", textDecoration: "underline dotted" } : undefined}
+    ><i />{map[app.saveStatus]}{app.saveStatus === "error" ? " · sababi?" : ""}</span>
+  );
 }
