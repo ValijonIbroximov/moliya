@@ -356,8 +356,8 @@ function SaveStatus() {
       className={`status ${app.saveStatus}`}
       role="status"
       title={detail}
-      onClick={() => { if (detail && (app.saveStatus === "error" || app.saveStatus === "offline")) toast(detail, { label: "OK", fn: () => {} }); }}
+      onClick={() => { if (detail) toast(detail, { label: "OK", fn: () => {} }); }}
       style={app.saveStatus === "error" ? { cursor: "pointer", textDecoration: "underline dotted" } : undefined}
-    ><i />{map[app.saveStatus]}{app.saveStatus === "error" ? " · sababi?" : ""}</span>
+    ><i />{map[app.saveStatus]}{app.saveStatus === "error" ? " · sababi?" : detail ? " · ⚠" : ""}</span>
   );
 }

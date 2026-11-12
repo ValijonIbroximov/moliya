@@ -276,6 +276,7 @@ export function exportData() {
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 let retryDelay = 1500;
+let schemaWarn: string | undefined;
 
 function scheduleFlush(delay = 700) {
   if (flushTimer) clearTimeout(flushTimer);
@@ -308,7 +309,17 @@ export async function flush(): Promise<void> {
     }
     if (snapshot.notes.length) {
       const rows: NoteRow[] = state.notes.filter((n) => snapshot.notes.includes(n.id)).map((n) => ({ ...n, disabled: !!n.disabled, user_id: u.id }));
-      if (rows.length) { const { error } = await sb.from(TABLES.notes).upsert(rows, { onConflict: "id" }); if (error) throw error; }
+      if (rows.length) {
+        let { error } = await sb.from(TABLES.notes).upsert(rows, { onConflict: "id" });
+        // Jadvalda "disabled" ustuni hali yo'q bo'lsa — saqlashni to'xtatmaymiz: ustunsiz yuboramiz
+        if (error && /disabled/i.test(error.message || "")) {
+          const slim = rows.map(({ disabled: _d, ...r }) => r);
+          const r2 = await sb.from(TABLES.notes).upsert(slim, { onConflict: "id" });
+          if (!r2.error) { schemaWarn = "Yozuvlar bulutga saqlandi, lekin jadvalda \"disabled\" ustuni yo'q — Tarixdagi faolsizlantirish belgisi sinxronlanmaydi. Yechim: Supabase SQL Editor'da \"alter table public.moliya_notes add column if not exists disabled boolean not null default false;\""; error = null; }
+          else error = r2.error;
+        }
+        if (error) throw error;
+      }
     }
     if (snapshot.settings) {
       const { error } = await sb.from(TABLES.settings).upsert({ user_id: u.id, data: state.settings, updated_at: state.settings.updated_at }, { onConflict: "user_id" });
@@ -321,7 +332,7 @@ export async function flush(): Promise<void> {
     if (snapshot.settings && state.settings.updated_at === settingsAt) outbox.settings = false;
     retryDelay = 1500;
     const done = !outbox.notes.length && !outbox.accounts.length && !outbox.settings && !outbox.delAccounts.length;
-    set({ saveStatus: done ? "cloud" : "saving", saveError: undefined, lastSync: nowISO() });
+    set({ saveStatus: done ? "cloud" : "saving", saveError: schemaWarn, lastSync: nowISO() });
     persistLocal();
     if (!done) scheduleFlush(200);
   } catch (e) {
