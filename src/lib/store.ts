@@ -126,9 +126,36 @@ function loadScope(scope: string) {
   const settings = { ...defaultSettings(), ...(p?.settings || {}) };
   const notes = p?.notes || [];
   const active = ui?.activeNoteId && notes.some((n) => n.id === ui.activeNoteId && !n.deleted) ? ui.activeNoteId : null;
+
+  // ---- ID tozalash: buzilgan/"null" UUID butun sinxronni to'xtatib qo'ymasin ----
+  let fixed = 0;
+  for (const n of notes) {
+    if (typeof n.id === "string" && UUID_RE.test(n.id)) continue;
+    n.id = uid(); n.updated_at = nowISO();
+    if (!outbox.notes.includes(n.id)) outbox.notes.push(n.id);
+    fixed++;
+  }
+  for (const a of accounts) {
+    if (typeof a.id === "string" && UUID_RE.test(a.id)) continue;
+    const old = a.id as unknown as string;
+    a.id = uid(); a.updated_at = nowISO();
+    const pr = settings.accountPrefs?.[old];
+    if (pr) { settings.accountPrefs![a.id] = pr; delete settings.accountPrefs![old]; outbox.settings = true; }
+    if (!outbox.accounts.includes(a.id)) outbox.accounts.push(a.id);
+    fixed++;
+  }
+  const validId = (x: unknown): x is string => typeof x === "string" && UUID_RE.test(x);
+  const ob0 = (outbox.delAccounts || []).length + outbox.notes.length + outbox.accounts.length;
+  outbox.delAccounts = (outbox.delAccounts || []).filter(validId);
+  outbox.notes = outbox.notes.filter(validId);
+  outbox.accounts = outbox.accounts.filter(validId);
+  if (fixed || ob0 !== (outbox.delAccounts.length + outbox.notes.length + outbox.accounts.length)) persistLocal2 = true;
+
   set({ scope, accounts, notes, settings, lastSync: p?.lastSync || null, activeNoteId: active, saveStatus: scope === "guest" ? "guest" : "local" });
-  if (!p) persistLocal();
+  if (!p || persistLocal2) persistLocal();
+  persistLocal2 = false;
 }
+let persistLocal2 = false;
 
 // ---------- mutatsiyalar ----------
 function afterChange(kind: "note" | "account" | "settings", id?: string) {
@@ -299,8 +326,9 @@ export async function flush(): Promise<void> {
   const snapshot: Outbox = { notes: [...outbox.notes], accounts: [...outbox.accounts], settings: outbox.settings, delAccounts: [...(outbox.delAccounts || [])] };
   const settingsAt = state.settings.updated_at;
   try {
-    if (snapshot.delAccounts?.length) {
-      const { error } = await sb.from(TABLES.accounts).delete().in("id", snapshot.delAccounts).eq("user_id", u.id);
+    const delIds = (snapshot.delAccounts || []).filter((x) => typeof x === "string" && UUID_RE.test(x));
+    if (delIds.length) {
+      const { error } = await sb.from(TABLES.accounts).delete().in("id", delIds).eq("user_id", u.id);
       if (error) throw error;
     }
     if (snapshot.accounts.length) {
